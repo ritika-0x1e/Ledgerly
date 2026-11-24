@@ -10,7 +10,7 @@ APP_URL = "https://ritika-0x1e.github.io/Ledgerly/"
 # Make it with: npx wrangler kv namespace create TOKENS   (then paste the id it prints)
 [[kv_namespaces]]
 binding = "TOKENS"
-id = "PASTE-KV-NAMESPACE-ID"
+id = "82c41eb2cbbe4471a16989fc0cd750e1"
 
 # Secrets (not in this file): npx wrangler secret put GOOGLE_CLIENT_ID
 #                             npx wrangler secret put GOOGLE_CLIENT_SECRET

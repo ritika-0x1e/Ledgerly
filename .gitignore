@@ -4,3 +4,7 @@ node_modules/
 
 # personal expense notes (used by the local parser test only)
 test fomat .md
+
+# Cloudflare wrangler: local cache and local secrets
+.wrangler/
+.dev.vars*
