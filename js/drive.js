@@ -62,9 +62,17 @@ const drive = (() => {
     return res.status === 204 ? null : res.json();
   }
 
+  // The saved folder is checked on every backup: if you deleted (or binned) it in Drive, the app
+  // forgets it and its files, makes a fresh "Ledgerly" folder and uploads every month again.
   async function folderId() {
     const saved = get(K.folder);
-    if (saved) return saved;
+    if (saved) {
+      let gone = false;
+      try { gone = (await gapi("GET", `https://www.googleapis.com/drive/v3/files/${saved}?fields=trashed`)).trashed; }
+      catch (e) { if (e.status !== 404) throw e; gone = true; }
+      if (!gone) return saved;
+      for (const k of [K.folder, K.files, K.synced]) set(k, null);
+    }
     const q = encodeURIComponent(`name='${FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
     const found = await gapi("GET", `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&spaces=drive`);
     const id = found.files && found.files[0] ? found.files[0].id
@@ -100,11 +108,11 @@ const drive = (() => {
     if (running) return running;
     running = (async () => {
       const months = (await store.all()).filter((m) => !isEmptyMonth(m));
+      const parent = months.length ? await folderId() : null;   // first, as it may reset what was synced
       const files = readJson(K.files) || {}, synced = readJson(K.synced) || {};
       const todo = months.filter((m) => !synced[m.ym] || synced[m.ym] < m.updatedAt);
       if (todo.length) {
         const comps = computeAll(months, TAGS);
-        const parent = await folderId();
         for (const m of todo) {
           files[m.ym] = await upload(`${monthTitle(m.ym)}.txt`, monthToText(m, TAGS, comps.get(m.ym)), files[m.ym], parent);
           synced[m.ym] = m.updatedAt;
@@ -118,8 +126,12 @@ const drive = (() => {
       if (opts.manual || (todo.length && !document.hidden)) toast(todo.length ? `Backed up ${todo.length} month${todo.length === 1 ? "" : "s"} to Drive` : "Drive is up to date");
     })().catch((err) => {
       if (err.status === 404) set(K.folder, null);    // folder gone: make it again next time
-      set(K.error, err.message);
-      if (!opts.quiet || opts.manual) toast(`Drive backup failed: ${err.message}`);
+      // "Failed to fetch" is the browser's word for "no connection": offline, or the phone cut the
+      // request off because the app went to the background. Not worth a lasting error; it retries.
+      const offline = err instanceof TypeError;
+      const msg = offline ? "couldn't reach Drive (offline?)" : err.message;
+      if (!offline || !opts.quiet) set(K.error, msg);
+      if (!opts.quiet || opts.manual) toast(`Drive backup failed: ${msg}`);
     }).finally(() => { running = null; });
     return running;
   }
@@ -131,9 +143,15 @@ const drive = (() => {
     const err = get(K.error);
     if (err) return `Drive: ${err}`;
     if (!last) return "Drive: not backed up yet";
-    const mins = Math.floor((Date.now() - last) / 60000);
-    const ago = mins < 2 ? "just now" : mins < 60 ? `${mins} min ago` : mins < 1440 ? `${Math.floor(mins / 60)} h ago` : `${Math.floor(mins / 1440)} days ago`;
-    return `Drive: backed up ${ago}`;
+    // "just now" / "12 min ago" for fresh ones, then the date and time: "today, 14:32", "21 Nov, 09:10".
+    const mins = Math.floor((Date.now() - last) / 60000), d = new Date(last);
+    if (mins < 2) return "Last backup: just now";
+    if (mins < 60) return `Last backup: ${mins} min ago`;
+    const time = d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+    const dayDiff = Math.round((new Date().setHours(0, 0, 0, 0) - new Date(last).setHours(0, 0, 0, 0)) / 864e5);
+    const day = dayDiff === 0 ? "today" : dayDiff === 1 ? "yesterday"
+      : d.toLocaleDateString(undefined, { day: "numeric", month: "short", ...(d.getFullYear() !== new Date().getFullYear() && { year: "numeric" }) });
+    return `Last backup: ${day}, ${time}`;
   }
 
   return { configured, connected, connect, disconnect, takeKeyFromUrl, backup, note };

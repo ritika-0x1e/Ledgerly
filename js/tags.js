@@ -5,7 +5,7 @@
 // the tag's id) and also rewrites Totals labels that use the old name ("Regular expenses").
 
 const SWATCHES = TAG_PALETTE;
-let openTag = null;   // id of the tag whose editor is open
+let openTag = null;   // id of the tag whose editor is open, or "new" for the new-tag form
 
 function swatches(selected) {
   let value = selected;
@@ -40,12 +40,26 @@ async function tagUsage() {
   return use;
 }
 
+// The tags as small chips; tapping one (or "+ New") opens its editor under them.
 async function renderTags() {
   const use = await tagUsage();
-  const card = el("div", { class: "tg-card" });
-  if (!TAGS.length) card.append(el("div", { class: "empty", text: "No tags yet." }));
-  TAGS.forEach((t, i) => card.append(tagRow(t, i, use.get(t.id))));
-  $("pop-tags").replaceChildren(card, newTagForm());
+  const chips = el("div", { class: "tg-chips" });
+  TAGS.forEach((t) => chips.append(tagChip(t)));
+  const add = el("button", { type: "button", class: "tg-chip tg-add" + (openTag === "new" ? " on" : ""), text: "+ New", "aria-expanded": String(openTag === "new") });
+  add.addEventListener("click", () => { openTag = openTag === "new" ? null : "new"; renderTags(); });
+  chips.append(add);
+  const open = TAGS.findIndex((t) => t.id === openTag);
+  const below = openTag === "new" ? newTagForm() : open >= 0 ? tagEditor(TAGS[open], open, use.get(openTag)) : null;
+  $("pop-tags").replaceChildren(...[chips, below].filter(Boolean));
+  if (openTag === "new") below.querySelector("input").focus();
+}
+function tagChip(t) {
+  const dot = el("span", { class: "tg-dot" });
+  dot.style.background = t.color;
+  const on = openTag === t.id;
+  const b = el("button", { type: "button", class: "tg-chip" + (on ? " on" : ""), "aria-expanded": String(on) }, dot, t.name);
+  b.addEventListener("click", () => { openTag = on ? null : t.id; renderTags(); });
+  return b;
 }
 // After a change: the popover and the notebook's sections are drawn again, and a toast says so.
 async function tagsChanged(msg) {
@@ -62,25 +76,12 @@ function newTagForm() {
     if (!cleanTagName(input.value)) { toast("Give the tag a name (up to 30 characters)"); return; }
     if (tagNamed(input.value, TAGS)) { toast("That tag already exists"); return; }
     const tag = addTag(input.value, sw.value);
+    openTag = null;
     await tagsChanged(`Tag “${tag.name}” added`);
   };
   btn.addEventListener("click", add);
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); add(); } });
-  return el("div", { class: "tg-card tg-new" }, el("div", { class: "tg-newrow" }, input, btn), sw.node);
-}
-
-function tagRow(t, index, u) {
-  const open = openTag === t.id;
-  const dot = el("span", { class: "tg-dot" });
-  dot.style.background = t.color;
-  const used = u && u.count ? `${u.count} line${u.count === 1 ? "" : "s"} · ${money(-u.total)}` : "Not used yet";
-  const head = el("button", { type: "button", class: "tg-head", "aria-expanded": String(open) },
-    dot, el("span", { class: "tg-text" }, el("span", { class: "tg-name", text: t.name }), el("span", { class: "tg-meta", text: used })),
-    el("span", { class: "chev", text: "›" }));
-  head.addEventListener("click", () => { openTag = open ? null : t.id; renderTags(); });
-  const item = el("div", { class: "tg-item" + (open ? " open" : "") }, head);
-  if (open) item.append(tagEditor(t, index, u));
-  return item;
+  return el("div", { class: "tg-editor" }, el("div", { class: "tg-newrow" }, input, btn), sw.node);
 }
 
 // The word run of `oldName` in a label, case and punctuation aside: "Regular expenses" -> "Daily expenses".
@@ -137,8 +138,8 @@ function tagEditor(t, index, u) {
   const sw = swatches(t.color);
   const save = el("button", { type: "button", class: "tg-btn", text: "Save" });
   const del = el("button", { type: "button", class: "tg-btn danger", text: "Delete" });
-  const up = el("button", { type: "button", class: "tg-btn ghost", text: "Move up", "aria-label": "Move up" });
-  const down = el("button", { type: "button", class: "tg-btn ghost", text: "Move down", "aria-label": "Move down" });
+  const up = el("button", { type: "button", class: "tg-btn ghost", text: "↑", "aria-label": "Move up" });
+  const down = el("button", { type: "button", class: "tg-btn ghost", text: "↓", "aria-label": "Move down" });
   up.disabled = index === 0;
   down.disabled = index === TAGS.length - 1;
   const move = async (d) => { TAGS.splice(index + d, 0, TAGS.splice(index, 1)[0]); saveTags(); await tagsChanged(); };
@@ -166,5 +167,5 @@ function tagEditor(t, index, u) {
   });
 
   return el("div", { class: "tg-editor" }, input, sw.node,
-    el("div", { class: "tg-actions" }, up, down), el("div", { class: "tg-actions" }, del, save));
+    el("div", { class: "tg-actions" }, up, down, del, save));
 }

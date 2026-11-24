@@ -8,3 +8,4 @@ test fomat .md
 # Cloudflare wrangler: local cache and local secrets
 .wrangler/
 .dev.vars*
+test_import_fomat.txt

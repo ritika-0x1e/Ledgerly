@@ -17,7 +17,7 @@ which goes straight from the phone to your own Drive.
   home-screen app keeps its data separately from Safari.
 
 On first start the app asks which currency you use (change it later in the menu). The menu also has
-**Theme**: System, Light (the paper look) or Dark.
+**Theme**: Light (the paper look) or Dark. Until you pick one, it starts in your phone's setting.
 
 ## Using the notebook
 Each month is one page; switch months with ‹ › or the month list at the top.

@@ -2,23 +2,28 @@
    data-theme="light|dark" on <html> (System follows the phone). The menu and the settings popover
    use the same colours on a plainer card style. */
 :root {   /* Denim: cool paper, grey-blue ink */
-  --bg: #dde4ea; --paper: #f6f8f9; --card: #f6f8f9; --ink: #1d3245; --text: #1d3245; --muted: #5f7184;
-  --rule: rgba(58, 107, 154, .13); --sum: #3a6b9a; --auto: #3a6b9a; --plus: #2f7a52; --hl: rgba(127, 169, 211, .28);
-  --stamp: #3a6b9a; --accent: #3a6b9a; --accent-text: #fff; --danger: #b3261e; --line: var(--rule);
+  --bg: #e1e8ee; --paper: #f7f9fa; --card: #f7f9fa; --ink: #233b52; --text: #233b52; --muted: #5f7386;
+  --rule: rgba(68, 115, 161, .13); --sum: #4473a1; --auto: #4473a1; --plus: #2f7a52; --hl: rgba(127, 169, 211, .28);
+  --stamp: #4473a1; --accent: #4473a1; --accent-text: #fff; --danger: #b3261e; --line: var(--rule);
   --stroke: rgba(29, 50, 69, .12); --hover: rgba(29, 50, 69, .06); --field: #e9eef2;
-  --line-h: 32px; --band: var(--ink);
+  --line-h: 32px; --band: color-mix(in srgb, var(--accent) 11%, var(--paper)); --warm: #d9925a; --scrim: rgba(24, 40, 56, .22);
 }
 :root[data-theme="dark"] {
   --bg: #0a1016; --paper: #111a22; --card: #16212b; --ink: #dbe4ec; --text: #dbe4ec; --muted: #8a9aab;
   --rule: rgba(127, 169, 211, .09); --sum: #7fa9d3; --auto: #9dbde0; --plus: #6fd39a; --hl: rgba(127, 169, 211, .12);
   --stamp: #7fa9d3; --accent: #7fa9d3; --accent-text: #0a1016; --danger: #ff9a92; --line: var(--rule);
-  --stroke: rgba(255, 255, 255, .1); --hover: rgba(255, 255, 255, .06); --field: #1a2631; --band: #a9bccf;
+  --stroke: rgba(255, 255, 255, .1); --hover: rgba(255, 255, 255, .06); --field: #1a2631; --band: color-mix(in srgb, var(--accent) 13%, var(--paper)); --warm: #c98a5a; --scrim: rgba(0, 0, 0, .45);
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
 html, body { margin: 0; background: var(--bg); color: var(--text);
   font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 body { min-height: 100vh; min-height: 100dvh; }
+/* a soft wash of the accent behind the sheets, so the page isn't flat */
+body.nb { background:
+  radial-gradient(120% 60% at 0% 0%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 70%),
+  radial-gradient(90% 50% at 100% 100%, color-mix(in srgb, var(--warm) 12%, transparent), transparent 70%),
+  var(--bg); background-attachment: fixed; }
 button, input, select { font: inherit; color: inherit; }
 button { background: none; border: 0; cursor: pointer; }
 button:disabled { opacity: .35; cursor: default; }
@@ -33,7 +38,7 @@ header h1 { flex: 1; font-size: 1.25rem; font-weight: 700; padding-left: 4px; co
 .icon:active { background: var(--hover); }
 .icon svg { display: block; margin: auto; }
 .menu { position: absolute; right: 12px; top: calc(52px + env(safe-area-inset-top)); z-index: 30; background: var(--card); color: var(--text);
-  border-radius: 14px; min-width: 230px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 0 0 1px var(--stroke); }
+  border-radius: 14px; min-width: 230px; overflow: hidden; box-shadow: 0 0 0 100vmax var(--scrim), 0 10px 30px rgba(0,0,0,.25), inset 0 0 0 1px var(--stroke); }
 .menu button { display: block; width: 100%; text-align: left; padding: 13px 16px; }
 .menu button:active { background: var(--hover); }
 .menu > * + * { box-shadow: 0 -1px 0 var(--line); }
@@ -52,19 +57,34 @@ body.nb header { position: relative; z-index: 20; background: transparent; }   /
 
 /* a month: one continuous sheet, with its name and total pinned while you are in it */
 .d-monthgroup { margin: 0 -8px 22px; border-radius: 18px; overflow: clip; background: var(--paper);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, .08), 0 -1px 0 rgba(0, 0, 0, .05); }
+  border: 1px solid color-mix(in srgb, var(--accent) 14%, transparent);
+  box-shadow: 0 1px 2px rgba(29, 50, 69, .06), 0 8px 24px -8px rgba(29, 50, 69, .14); }
+:root[data-theme="dark"] .d-monthgroup { box-shadow: 0 8px 28px -10px rgba(0, 0, 0, .6); }
 .d-month { position: sticky; top: 0; z-index: 3; border-radius: 18px 18px 0 0; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
-  margin: 0; padding: 16px; background: var(--band); color: var(--paper); font-size: 1rem; text-transform: none; letter-spacing: normal; }
-.d-monthname { font-size: 1.75rem; font-weight: 800; letter-spacing: -.01em; line-height: 1.15; }
-.d-monthtotal { font-size: 1.2rem; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  margin: 0; padding: 14px 16px; color: var(--ink);
+  background: color-mix(in srgb, var(--accent) 20%, var(--paper)); font-size: 1rem; text-transform: none; letter-spacing: normal; }
+.d-monthname { font-size: 1.75rem; font-weight: 800; color: color-mix(in srgb, var(--accent) 45%, var(--ink)); letter-spacing: -.01em; line-height: 1.15; }
+/* the month's total in a small pill */
+.d-monthtotal { align-self: center; font-size: 1.05rem; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums;
+  padding: 4px 12px; border-radius: 999px; background: var(--accent); color: var(--accent-text);
+  box-shadow: 0 2px 8px -2px color-mix(in srgb, var(--accent) 60%, transparent); }
 
 /* the sheet: every line sits on a rule, headings and totals too */
 .d-page { position: relative; padding: 8px 0 var(--line-h); }
 .d-page { --ruled: repeating-linear-gradient(to bottom, transparent 0 calc(var(--line-h) - 1px), var(--rule) calc(var(--line-h) - 1px) var(--line-h)); }
 .d-sechead, .d-paper, .d-secfoot, .d-total { display: block; margin: 0; padding: 0 16px; line-height: var(--line-h); background: var(--ruled); }
 .d-sec { --tc: var(--ink); }
-.d-sec + .d-sec { padding-top: var(--line-h); background: var(--ruled); }   /* one empty ruled line between parts */
-.d-sechead { height: var(--line-h); font-size: 1.05rem; font-weight: 700; color: color-mix(in srgb, var(--tc) 80%, var(--ink)); }
+/* one fixed empty line only between a tag's total and the next tag; the lines above a tag name are
+   the untagged area's own lines, so you add or remove them with Enter and Backspace */
+.d-tagged + .d-tagged { padding-top: var(--line-h); background: var(--ruled); }
+.d-sechead { box-sizing: border-box; height: var(--line-h); font-size: 1.05rem; font-weight: 700; color: color-mix(in srgb, var(--tc) 80%, var(--ink));
+  background: none; border-bottom: 1px solid color-mix(in srgb, var(--tc) 45%, transparent); }   /* one line under the tag name */
+.d-tagged .d-sechead { background: color-mix(in srgb, var(--tc) 16%, transparent); }
+.d-tagged .d-sum { border-top-color: var(--tc); }
+.d-sechead::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%;
+  vertical-align: .1em; background: var(--tc); }
+/* one line between Totals and the expenses */
+.d-totals { border-bottom: 1.5px solid color-mix(in srgb, var(--accent) 45%, transparent); }
 
 /* the text box is see-through on top; .d-mirror under it shows the same lines, figures inked */
 .d-paper { position: relative; padding: 0; }
@@ -92,6 +112,9 @@ body.nb header { position: relative; z-index: 20; background: transparent; }   /
 .d-footlabel { color: var(--muted); }
 .d-sec .d-secfoot { color: color-mix(in srgb, var(--tc) 80%, var(--ink)); }
 .d-result { font-weight: 700; color: var(--ink); }
+/* the month's result gets a faint wash of the accent */
+.d-result { background-color: color-mix(in srgb, var(--accent) 10%, transparent); }
+.d-result .d-sum { color: var(--accent); }
 .d-reslabel { flex: 1; min-width: 0; height: var(--line-h); padding: 0; border: 0; outline: 0; background: transparent;
   font-weight: 700; color: var(--ink); }
 .d-reslabel::placeholder { color: var(--muted); font-weight: 500; }
@@ -105,15 +128,40 @@ body.nb header { position: relative; z-index: 20; background: transparent; }   /
 .pop { position: fixed; right: max(12px, calc(50% - 298px)); top: calc(52px + env(safe-area-inset-top)); z-index: 30;
   width: min(360px, calc(100% - 24px)); max-height: calc(100dvh - 72px - env(safe-area-inset-top)); overflow-y: auto; overscroll-behavior: contain;
   padding: 6px 14px 14px; border-radius: 14px; background: var(--card); color: var(--text);
-  box-shadow: 0 10px 30px rgba(0,0,0,.22), inset 0 0 0 1px var(--stroke); }
-.pop h2 { margin: 14px 0 6px; }
-.pop .hint { margin: 0 0 8px; }
-.pop-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
-.pop-row + .pop-row { box-shadow: 0 -1px 0 var(--line); }
-.pop-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pop-select { flex: none; max-width: 52%; height: 36px; border: 0; border-radius: 10px; padding: 0 8px; background: var(--field); color: var(--text); }
-.pop .tg-card { background: transparent; box-shadow: none; padding: 0; }
-.pop .tg-new { padding: 0 0 4px; margin: 0; }
+  box-shadow: 0 0 0 100vmax var(--scrim), 0 10px 30px rgba(0,0,0,.22), inset 0 0 0 1px var(--stroke); }
+.pop h2 { margin: 12px 0 4px; }
+.pop .hint { margin: 0 0 4px; }
+/* a Totals line and what it follows: plain text, no boxes */
+.pop-row { display: flex; align-items: center; gap: 10px; min-height: 36px; }
+.pop-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: .95rem; }
+.pop-pick { flex: none; display: inline-flex; align-items: center; gap: 6px; max-width: 50%; height: 30px; padding: 0 10px; border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-weight: 600; font-size: .9rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pop-pick::after { content: ""; flex: none; width: 5px; height: 5px; margin-top: -3px; border: solid currentColor; border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg); opacity: .7; transition: transform .15s; }
+.pop-pick[aria-expanded="true"]::after { transform: rotate(-135deg); margin-top: 3px; }
+.pop-pick.off { background: none; color: var(--muted); font-weight: 400; box-shadow: inset 0 0 0 1px var(--stroke); }
+/* the options open in place, as chips under the row */
+.pop-menu { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0 10px; }
+.pop-opt { display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; font-size: .9rem;
+  box-shadow: inset 0 0 0 1px var(--stroke); white-space: nowrap; }
+.pop-opt .tg-dot { width: 8px; height: 8px; }
+.pop-opt:hover { background: var(--hover); }
+.pop-opt.on { background: var(--accent); color: var(--accent-text); font-weight: 600; box-shadow: none; }
+.pop-opt.on .tg-dot { box-shadow: 0 0 0 1.5px var(--accent-text); }   /* keeps a blue tag's dot visible on the blue chip */
+/* tags as chips; the one you tap opens below */
+.tg-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0; }
+.tg-chip { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border-radius: 999px;
+  box-shadow: inset 0 0 0 1px var(--stroke); font-size: .95rem; font-weight: 600; }
+.tg-chip .tg-dot { width: 9px; height: 9px; }
+.tg-chip.on { background: var(--hover); box-shadow: inset 0 0 0 1.5px var(--accent); }
+.tg-add { color: var(--muted); font-weight: 500; }
+.pop .tg-editor { padding: 10px 0 2px; }
+.pop .tg-input, .pop .tg-btn { height: 40px; }
+.pop .tg-actions { margin-top: 10px; justify-content: flex-start; }
+.pop .tg-actions .tg-btn { flex: none; padding: 0 14px; }
+.pop .tg-actions .tg-btn.ghost { width: 40px; padding: 0; }
+.pop .tg-actions .danger { margin-left: auto; }
 
 /* ---------- currency dialog ---------- */
 .cur-dialog { width: min(440px, calc(100% - 32px)); max-height: 80dvh; border: 0; border-radius: 16px; padding: 18px;

@@ -125,11 +125,11 @@ function drawCard(ym) {
 
   const sheet = el("div", { class: "d-page" },
     el("section", { class: "d-sec d-totals" }, tArea.node, el("div", { class: "d-secfoot d-result" }, card.resFig.node, label)),
-    el("section", { class: "d-sec" }, paper(ym, "untagged", null, `Expenses without a tag, ${monthTitle(ym)}`, 2).node));
+    el("section", { class: "d-sec" }, paper(ym, "untagged", null, `Expenses without a tag, ${monthTitle(ym)}`, 1).node));
   for (const t of TAGS) {
     const fig = figNode();
     card.tagFigs.set(t.id, fig);
-    const sec = el("section", { class: "d-sec" },
+    const sec = el("section", { class: "d-sec d-tagged" },
       el("h3", { class: "d-sechead", text: t.name }), paper(ym, "tag", t.id, `${t.name}, ${monthTitle(ym)}`, 1).node,
       el("div", { class: "d-secfoot" }, fig.node, el("span", { class: "d-footlabel", text: "total" })));
     sec.style.setProperty("--tc", t.color);
@@ -145,8 +145,8 @@ function drawCard(ym) {
 // A worked-out figure in the figure column, with a short stroke over it like a hand-written sum.
 function figNode() {
   const padN = el("span", { class: "d-pad" }), sum = el("span", { class: "d-sum" });
-  return { node: el("span", { class: "d-figcol" }, padN, sum, " "), set(text) {
-    const t = text.replace(/^ +/, "");
+  return { node: el("span", { class: "d-figcol" }, sum, padN, " "), set(text) {
+    const t = text.trim();
     padN.textContent = FIG.repeat(Math.max(0, COL - t.length));
     sum.textContent = t;
   } };
@@ -171,20 +171,20 @@ function setText(a, text, m = monthOf(a)) {
 }
 const areaFor = (ym, kind, id) => nb.areas.find((a) => a.ym === ym && a.kind === kind && (id == null || a.id === id));
 
-// The paper grows with what is written, keeping one empty line to write on below it.
+// The paper is exactly as tall as its lines (at least one, to put the cursor on), so every empty
+// line on the page is one you made: Enter adds one, Backspace takes it away.
 function fit(a) {
   if (!a.area.isConnected) return;
   const y = window.scrollY;
   a.area.style.height = "0";
-  const extra = a.area.value === "" || a.area.value.endsWith("\n") ? 0 : LINE;
-  a.area.style.height = `${Math.max(a.min * LINE, a.area.scrollHeight + extra)}px`;
+  a.area.style.height = `${Math.max(a.min * LINE, a.area.scrollHeight)}px`;
   if (window.scrollY !== y) window.scrollTo(0, y);
   drawMirror(a);
 }
 
 // The copy under the text box: the same characters (so the caret lines up), with figures inked
 // and the figures of linked Totals lines drawn into their empty figure column.
-const FIGURE = /^( *)(\+?)(\d[\d.]*)(?= |$)/;
+const FIGURE = /^(\s*)(\+?)(\d[\d.]*)(?=\s|$)/u;
 function drawMirror(a) {
   const c = nb.comps.get(a.ym);
   const rows = a.area.value.split("\n").map((line, i) => {
@@ -193,7 +193,10 @@ function drawMirror(a) {
     const row = el("div", { class: "d-ml" });
     const v = a.kind === "totals" && c && c.vals[i];
     if (v && v.auto && line.startsWith(BLANK)) {
-      row.append(el("span", { class: "d-auto", text: v.auto === "tag" ? spentFig(v.v) : balanceFig(v.v) }), line.slice(COL));
+      // money in (a carried-over balance, a refund-heavy tag) gets the same green "+" as a typed one
+      const fig = v.auto === "tag" ? spentFig(v.v) : v.v > 0 ? figCol(`+${amount(v.v)}`) : balanceFig(v.v);
+      row.append(...(fig.startsWith("+") ? [el("span", { class: "d-plus", text: "+" })] : []),
+        el("span", { class: "d-auto", text: fig.replace(/^\+/, "") }), line.slice(COL));
       return row;
     }
     if (line.startsWith(BLANK)) {   // a Totals line still waiting for its figure
@@ -225,11 +228,37 @@ function showTotals() {
 
 // ---------- writing ----------
 const caretLine = (area) => area.value.slice(0, area.selectionStart).split("\n").length - 1;
+// A figure typed into a line's figure column (or at the start of the label of a line whose column is
+// empty) is lined up as you type, so the label doesn't jump about until the line is finished.
+const PADS = /[\u2007\u2008]/;
+function liveFigure(area) {
+  const v = area.value, pos = area.selectionStart;
+  if (pos !== area.selectionEnd) return;
+  const start = v.lastIndexOf("\n", pos - 1) + 1;
+  let end = v.indexOf("\n", pos);
+  if (end < 0) end = v.length;
+  const line = v.slice(start, end);
+  if (!PADS.test(line.slice(0, COL + 3))) return;          // only lines already laid out in columns
+  const m = line.match(/^[\u2007\u2008]*([+\-]?\d[\d.,]*)?[\u2007\u2008]*( ?)(.*)$/u);
+  if (!m) return;
+  let fig = m[1] || "", rest = m[3];
+  if (!fig) {                                                 // "55 " typed at the start of the label
+    const lead = rest.match(/^([+\-]?\d[\d.,]*) (.*)$/u);
+    if (lead) { fig = lead[1]; rest = lead[2]; }
+  }
+  const next = (fig ? figCol(fig) : BLANK) + " " + rest;
+  if (next === line) return;
+  const tail = line.length - (pos - start);                  // caret's distance from the line's end
+  const at = tail <= rest.length ? next.length - tail : fig.length;
+  area.value = v.slice(0, start) + next + v.slice(end);
+  area.setSelectionRange(start + at, start + at);
+}
 function wireArea(a) {
   const area = a.area;
   const live = () => nb.areas.includes(a);   // false once the months have been redrawn
   area.addEventListener("input", (e) => {
     if (!live()) return;
+    if (!e.isComposing && e.inputType !== "insertLineBreak" && e.inputType !== "insertParagraph") liveFigure(area);
     setText(a, area.value);
     if (e.inputType === "insertLineBreak" || e.inputType === "insertParagraph") {
       const done = caretLine(area) - 1;
@@ -386,21 +415,52 @@ function linkChoices(ym) {
   String(m.totals).split("\n").forEach((line, i) => {
     const p = parseLine(line), v = c && c.vals[i];
     if (!p || !v || (v.v !== null && !v.auto)) return;   // lines with a written figure don't fill in
-    const sel = el("select", { class: "pop-select", "aria-label": `${p.label || "Line"} fills in` },
-      el("option", { value: "none", text: "Nothing, I write it" }),
-      el("option", { value: "prev", text: "Last month's result" }),
-      ...TAGS.map((t) => el("option", { value: `tag:${t.id}`, text: `${t.name} total` })));
-    sel.value = v.link || "none";
-    sel.addEventListener("change", () => {
+    // Tapping the choice opens the options as small chips right under the row (no menu floating
+    // over the popover). "—" means you write the figure yourself.
+    const choices = [["none", "—", null], ["prev", "Last month", null], ...TAGS.map((t) => [`tag:${t.id}`, t.name, t.color])];
+    let value = v.link || "none";
+    const btn = el("button", { type: "button", class: "pop-pick", "aria-expanded": "false", "aria-label": `${p.label || "Line"} fills in` });
+    const menu = el("div", { class: "pop-menu", role: "listbox", "aria-label": `${p.label || "Line"} fills in` });
+    menu.hidden = true;
+    const choose = (val) => {
+      closePickers();
+      if (val === value) return;
+      value = val;
+      paint();
       while (m.links.length <= i) m.links.push(null);
-      m.links[i] = sel.value;
+      m.links[i] = val;
       schedule(ym);
       showTotals();
       flushSave({ announce: true });
+    };
+    function paint() {
+      btn.textContent = (choices.find((x) => x[0] === value) || choices[0])[1];
+      btn.classList.toggle("off", value === "none");   // written by hand: quieter
+      menu.replaceChildren(...choices.map(([val, text, color]) => {
+        const o = el("button", { type: "button", class: "pop-opt" + (val === value ? " on" : ""), role: "option", "aria-selected": String(val === value) });
+        if (color) { const dot = el("span", { class: "tg-dot" }); dot.style.background = color; o.append(dot); }
+        o.append(text);
+        o.addEventListener("click", (e) => { e.stopPropagation(); choose(val); });
+        return o;
+      }));
+    }
+    paint();
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const open = menu.hidden;
+      closePickers();
+      menu.hidden = !open;
+      btn.setAttribute("aria-expanded", String(open));
     });
-    rows.push(el("label", { class: "pop-row" }, el("span", { class: "pop-label", text: p.label || "(no label)" }), sel));
+    rows.push(el("div", { class: "pop-item" },
+      el("div", { class: "pop-row" }, el("span", { class: "pop-label", text: p.label || "(no label)" }), btn), menu));
   });
   return rows;
+}
+
+function closePickers() {
+  for (const menu of document.querySelectorAll(".pop-menu")) menu.hidden = true;
+  for (const b of document.querySelectorAll(".pop-pick")) b.setAttribute("aria-expanded", "false");
 }
 
 // ---------- saving ----------

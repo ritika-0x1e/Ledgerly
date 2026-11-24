@@ -202,8 +202,6 @@ $("import-file").addEventListener("change", async (e) => {
 });
 
 // ---------- menu ----------
-const THEMES = ["system", "light", "dark"];
-const themeName = () => { const t = localStorage.getItem("theme"); return THEMES.includes(t) ? t : "system"; };
 function drawMenu() {
   const on = drive.connected();
   $("drive-btn").textContent = !drive.configured() ? "Google Drive (not set up)" : on ? "Back up to Drive now" : "Connect Google Drive";
@@ -212,7 +210,11 @@ function drawMenu() {
   $("theme-btn").textContent = `Theme: ${themeName()[0].toUpperCase()}${themeName().slice(1)}`;
   $("backup-note").textContent = drive.note();
 }
-$("menu-btn").addEventListener("click", (e) => { e.stopPropagation(); drawMenu(); $("menu").hidden = !$("menu").hidden; });
+$("menu-btn").addEventListener("click", (e) => {
+  e.stopPropagation(); closePop();   // one open at a time
+  $("menu").hidden = !$("menu").hidden;
+  if (!$("menu").hidden) drawMenu();   // after opening, so a failing label never keeps the menu shut
+});
 $("menu").addEventListener("click", (e) => e.stopPropagation());
 document.addEventListener("click", () => { $("menu").hidden = true; closePop(); });
 for (const b of $("menu").querySelectorAll("button")) b.addEventListener("click", () => { if (b.id !== "theme-btn") $("menu").hidden = true; });
@@ -230,8 +232,7 @@ $("drive-off").addEventListener("click", async () => {
 });
 $("currency-btn").addEventListener("click", async () => { const c = await chooseCurrency(false); if (c) { await show(currentView); toast(`Currency set to ${c}`); } });
 $("theme-btn").addEventListener("click", () => {
-  const next = THEMES[(THEMES.indexOf(themeName()) + 1) % THEMES.length];
-  try { localStorage.setItem("theme", next); } catch { /* storage full */ }
+  try { localStorage.setItem("theme", themeName() === "dark" ? "light" : "dark"); } catch { /* storage full */ }
   applyTheme();
   syncThemeColor();
   drawMenu();
@@ -241,9 +242,9 @@ $("theme-btn").addEventListener("click", () => {
 async function openPop() {
   await flushSave();
   const ym = monthInView();
-  $("pop-links-title").textContent = `Lines that fill in, ${monthTitle(ym)}`;
+  $("pop-links-title").textContent = `Filled in · ${monthTitle(ym)}`;
   const rows = linkChoices(ym);
-  $("pop-links").replaceChildren(...(rows.length ? rows : [el("p", { class: "hint", text: "Every Totals line this month has its figure written in." })]));
+  $("pop-links").replaceChildren(...(rows.length ? rows : [el("p", { class: "hint", text: "Nothing to fill in this month." })]));
   await renderTags();
   $("pop").hidden = false;
   $("set-btn").setAttribute("aria-expanded", "true");
@@ -258,7 +259,7 @@ $("set-btn").addEventListener("click", (e) => {
   $("menu").hidden = true;
   if ($("pop").hidden) openPop().catch((err) => toast(err.message)); else closePop();
 });
-$("pop").addEventListener("click", (e) => e.stopPropagation());
+$("pop").addEventListener("click", (e) => { e.stopPropagation(); closePickers(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closePop(); $("menu").hidden = true; } });
 
 // ---------- the screen ----------
@@ -270,7 +271,6 @@ function syncThemeColor() {
   const bg = getComputedStyle(document.body).backgroundColor;
   document.querySelector('meta[name="theme-color"]').content = bg;
 }
-matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => setTimeout(syncThemeColor));
 
 async function show() {
   document.body.classList.add("nb");

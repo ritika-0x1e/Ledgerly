@@ -31,7 +31,7 @@ const trimBlank = (lines) => {
 
 // ---------- one line ----------
 const SIGNS = "+\\-\\u2212\\u2013";
-const AMT = "(?:\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.\\d{1,2})?";
+const AMT = "(?:\\d{1,3}(?:,\\d{3})+|\\d+)(?:\\.\\d{1,3})?";   // a third decimal is rounded off: 55.000 -> 55.00
 const LEAD_RE = new RegExp(`^([${SIGNS}])?\\s*(${AMT})(?=\\s|$)\\s*(.*)$`, "u");
 const ANY_RE = new RegExp(`(?<![\\w.,])([${SIGNS}]\\s*)?(${AMT})(?!\\w|\\.\\d)`, "gu");
 
@@ -61,7 +61,8 @@ const COL = 8;                         // the figure column, in digit widths ("+
 // An empty figure column, as wide as a written one: a figure always has one full stop, which is
 // narrower than a digit, so the last place is a punctuation space (the width of a full stop).
 const BLANK = FIG.repeat(COL - 1) + "\u2008";
-const figCol = (s) => s.padStart(COL, FIG);
+// A figure without a full stop (one still being typed) is padded with a punctuation space in its place.
+const figCol = (s) => s.length >= COL ? s : s.includes(".") ? s.padEnd(COL, FIG) : s.padEnd(COL - 1, FIG) + "\u2008";   // figures start at the left edge; labels line up after them
 const amount = (paise) => (paise / 100).toFixed(2);
 // blankCol: a line without a figure gets the empty figure column (Totals lines)
 function formatLine(p, blankCol) {
