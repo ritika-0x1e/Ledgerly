@@ -1,0 +1,16 @@
+# Cloudflare Worker that keeps the Google Drive sign-in (see README, "Google Drive backup").
+name = "ledgerly-drive"
+main = "index.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# Where the app lives (your GitHub Pages address, ending in "/").
+APP_URL = "https://ritika-0x1e.github.io/ledgerly/"
+
+# Make it with: npx wrangler kv namespace create TOKENS   (then paste the id it prints)
+[[kv_namespaces]]
+binding = "TOKENS"
+id = "PASTE-KV-NAMESPACE-ID"
+
+# Secrets (not in this file): npx wrangler secret put GOOGLE_CLIENT_ID
+#                             npx wrangler secret put GOOGLE_CLIENT_SECRET

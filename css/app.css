@@ -1,0 +1,154 @@
+/* Two looks: light is the paper notebook, dark is the same notebook at night. theme.js puts
+   data-theme="light|dark" on <html> (System follows the phone). The Tags screen and the menu use
+   the same colours on a plainer card style. */
+:root {
+  --bg: #e9e3d5; --paper: #fdf8ea; --card: #fdf8ea; --ink: #1b2a49; --text: #1b2a49; --muted: #85795f;
+  --rule: rgba(60, 100, 170, .22); --sum: #2f6fdc; --auto: #2f6fdc; --plus: #1f7a46; --hl: rgba(255, 224, 102, .38);
+  --stamp: #9b2c2c; --accent: #9b2c2c; --accent-text: #fff; --danger: #b3261e; --line: var(--rule);
+  --stroke: rgba(0, 0, 0, .1); --hover: rgba(0, 0, 0, .05); --field: #f3ecd9;
+  --line-h: 36px;
+}
+:root[data-theme="dark"] {
+  --bg: #040508; --paper: #0d1015; --card: #12161d; --ink: #dde5f0; --text: #dde5f0; --muted: #8791a3;
+  --rule: rgba(150, 180, 225, .17); --sum: #4f8cff; --auto: #7aa7ff; --plus: #6fd39a; --hl: rgba(140, 180, 255, .12);
+  --stamp: #e58a8a; --accent: #e58a8a; --accent-text: #1a0606; --danger: #ff9a92; --line: var(--rule);
+  --stroke: rgba(255, 255, 255, .1); --hover: rgba(255, 255, 255, .06); --field: #1a1f28;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html, body { margin: 0; background: var(--bg); color: var(--text);
+  font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+body { min-height: 100vh; min-height: 100dvh; }
+body.nb { background: var(--paper); }
+button, input, select { font: inherit; color: inherit; }
+button { background: none; border: 0; cursor: pointer; }
+button:disabled { opacity: .35; cursor: default; }
+h1, h2, h3 { margin: 0; }
+h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 20px 0 8px; }
+
+#app { max-width: 620px; margin: 0 auto; padding: 0 16px calc(40px + env(safe-area-inset-bottom)); }
+header { position: sticky; top: 0; z-index: 7; display: flex; align-items: center;
+  gap: 4px; margin: 0 -16px; padding: calc(6px + env(safe-area-inset-top)) 12px 6px; background: var(--bg); }
+body.nb header { background: var(--paper); }
+header h1 { flex: 1; font-size: 1.2rem; font-weight: 800; padding-left: 4px; color: var(--ink); }
+.icon { width: 44px; height: 44px; font-size: 1.7rem; border-radius: 50%; color: var(--ink); }
+.icon:active { background: var(--hover); }
+.menu { position: absolute; right: 12px; top: calc(52px + env(safe-area-inset-top)); z-index: 30; background: var(--card); color: var(--text);
+  border-radius: 12px; min-width: 230px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 0 0 1px var(--stroke); }
+.menu button { display: block; width: 100%; text-align: left; padding: 13px 16px; }
+.menu button:active { background: var(--hover); }
+.menu > * + * { box-shadow: 0 -1px 0 var(--line); }
+.menu-note { padding: 8px 16px 12px; font-size: .75rem; color: var(--muted); }
+
+.hint { color: var(--muted); font-size: .85rem; margin: 4px 0 12px; }
+.empty { text-align: center; color: var(--muted); padding: 22px 0; }
+
+.toast { font-size: .92rem; position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 40;
+  display: flex; align-items: center; gap: 14px; max-width: calc(100% - 32px); background: var(--paper); color: var(--ink);
+  padding: 12px 16px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--stroke), 0 6px 18px rgba(0, 0, 0, .22); }
+.toast button { color: var(--stamp); font-weight: 700; }
+
+/* ---------- notebook: the page fills the screen; Totals pinned on top, expenses scroll below ---------- */
+body.nb #app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; padding-bottom: 0; }
+body.nb #view-notebook { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+#nb-page { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+
+.nb-bar { flex: none; display: flex; align-items: center; gap: 2px; margin: 0 -8px; padding: 0 0 6px; }
+.nb-arrow { width: 40px; height: 40px; border-radius: 50%; font-size: 1.6rem; line-height: 1; color: var(--ink); }
+.nb-arrow:active { background: var(--hover); }
+.nb-pick { appearance: none; -webkit-appearance: none; border: 0; background: transparent; color: var(--ink);
+  font-size: 1.35rem; font-weight: 800; padding: 4px 6px; border-radius: 8px; max-width: 46%; }
+.nb-pick option { background: var(--card); color: var(--text); }
+.nb-pick:focus-visible { outline: 2px solid var(--sum); }
+.nb-total { margin-left: auto; padding-right: 8px; font-weight: 800; font-size: 1.05rem; color: var(--ink);
+  font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.nb-book { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 0 -16px; border-top: 3px solid var(--ink); }
+/* Totals: about a quarter of the page; its lines scroll inside it, the result row always shows */
+.nb-totals { flex: none; height: 27%; min-height: 158px; display: flex; flex-direction: column;
+  background: color-mix(in srgb, var(--paper) 94%, var(--ink)); box-shadow: 0 6px 10px -8px rgba(0,0,0,.35); position: relative; z-index: 2; }
+.nb-tscroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.nb-cap { position: sticky; top: 0; z-index: 2; height: 0; overflow: visible; padding: 4px 12px 0; text-align: right; pointer-events: none;
+  font-size: .66rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.nb-linkbar { flex: none; display: flex; align-items: center; gap: 8px; padding: 4px 16px; font-size: .8rem; color: var(--muted);
+  border-top: 1px dashed var(--rule); }
+.nb-linkbar select { flex: 1; min-width: 0; height: 32px; border: 0; border-radius: 8px; padding: 0 8px; background: var(--field); color: var(--ink); }
+.nb-result { flex: none; display: flex; align-items: center; gap: 10px; height: calc(var(--line-h) + 4px); padding: 0 16px;
+  border-top: 2px solid var(--ink); font-weight: 800; color: var(--ink); }
+.nb-reslabel { flex: 1; min-width: 0; border: 0; background: transparent; padding: 0; font-weight: 700; color: var(--ink); outline: 0; }
+.nb-reslabel::placeholder { color: var(--muted); font-weight: 500; }
+.nb-fig { flex: none; font-variant-numeric: tabular-nums; white-space: pre; }
+/* while you write in the expenses (the keyboard is up), Totals shrinks to its result row */
+.nb-book:has(.nb-exp textarea:focus) .nb-tscroll,
+.nb-book:has(.nb-exp textarea:focus) .nb-linkbar { display: none; }
+.nb-book:has(.nb-exp textarea:focus) .nb-totals { height: auto; min-height: 0; }
+
+.nb-exp { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+.nb-sec { --tc: var(--ink); margin-top: var(--line-h); }
+.nb-sechead { height: calc(var(--line-h) + 8px); display: flex; align-items: center; padding: 0 16px;
+  border-top: 2px solid color-mix(in srgb, var(--tc) 70%, transparent); border-bottom: 2px solid color-mix(in srgb, var(--tc) 70%, transparent);
+  font-size: .95rem; font-weight: 800; letter-spacing: .04em; color: color-mix(in srgb, var(--tc) 85%, var(--ink)); }
+.nb-foot { display: flex; align-items: center; gap: 10px; height: var(--line-h); padding: 0 16px; font-weight: 700; color: var(--ink); }
+.nb-foot .nb-fig { padding-top: 2px; border-top: 2px solid var(--sum); }
+.nb-sec .nb-foot { color: color-mix(in srgb, var(--tc) 80%, var(--ink)); }
+.nb-grand { margin-top: var(--line-h); height: calc(var(--line-h) + 6px); font-weight: 800; font-size: 1.05rem; border-top: 3px double var(--ink); }
+.nb-grand .nb-fig { border-top: 0; }
+
+/* ruled paper: a see-through text box over a drawn copy of the same text */
+.d-paper { position: relative; background: repeating-linear-gradient(to bottom, transparent 0 calc(var(--line-h) - 1px), var(--rule) calc(var(--line-h) - 1px) var(--line-h)); }
+.d-mirror { position: absolute; inset: 0; overflow: hidden; pointer-events: none; color: var(--ink); }
+.d-ml, .d-area { font-size: 1rem; line-height: var(--line-h); padding: 0 16px; white-space: pre-wrap; overflow-wrap: break-word;
+  font-variant-numeric: tabular-nums; font-family: inherit; letter-spacing: normal; }
+.d-ml { position: relative; min-height: var(--line-h); }
+.d-area { position: relative; display: block; width: 100%; min-height: var(--line-h); margin: 0; resize: none; overflow: hidden;
+  border: 0; border-radius: 0; outline: 0; background: transparent; color: transparent; caret-color: var(--stamp); }
+.d-area::selection { color: transparent; background: var(--hl); }
+.d-area::placeholder { color: var(--muted); opacity: .75; }
+.d-minus { color: var(--ink); font-weight: 700; }
+.d-plus { color: var(--plus); font-weight: 700; }
+.d-num { font-weight: 600; }
+/* a "____" line is drawn as a rule across the page */
+.d-rule { color: transparent; }
+.d-rule::after { content: ""; position: absolute; left: 16px; right: 16px; top: 50%; border-top: 2px solid var(--ink); opacity: .55; }
+/* the filled-in figure of a linked Totals line, in blue ink at the end of the line */
+.d-auto { float: right; margin-left: 12px; color: var(--auto); font-weight: 700; font-style: italic; }
+
+/* ---------- currency dialog ---------- */
+.cur-dialog { width: min(440px, calc(100% - 32px)); max-height: 80dvh; border: 0; border-radius: 16px; padding: 18px;
+  background: var(--card); color: var(--text); box-shadow: 0 20px 50px rgba(0,0,0,.35); flex-direction: column; gap: 10px; }
+.cur-dialog[open] { display: flex; }
+.cur-dialog::backdrop { background: rgba(0,0,0,.45); }
+.cur-dialog h2 { font-size: 1.1rem; text-transform: none; letter-spacing: 0; color: var(--text); margin: 0; }
+.cur-dialog .hint { margin: 0; }
+.cur-list { flex: 1; min-height: 160px; overflow-y: auto; border-radius: 12px; background: var(--bg); }
+.cur-item { display: flex; gap: 12px; align-items: baseline; width: 100%; padding: 11px 14px; text-align: left; }
+.cur-item b { width: 3.2em; flex: none; }
+.cur-item span { color: var(--muted); font-size: .9rem; }
+.cur-item.on { background: var(--hl); }
+.cur-item + .cur-item { box-shadow: 0 -1px 0 var(--line); }
+
+/* ---------- tags screen ---------- */
+.tg-card { background: var(--card); border-radius: 16px; padding: 4px 6px; box-shadow: inset 0 0 0 1px var(--stroke); }
+.tg-new { padding: 12px; margin-top: 8px; }
+.tg-newrow { display: flex; gap: 8px; }
+.tg-input { flex: 1; min-width: 0; height: 44px; padding: 0 12px; border: 0; border-radius: 12px; background: var(--field); color: var(--text); }
+.tg-input:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+.tg-btn { flex: none; height: 44px; padding: 0 18px; border-radius: 12px; background: var(--accent); color: var(--accent-text); font-weight: 600; }
+.tg-btn.danger { background: transparent; color: var(--danger); box-shadow: inset 0 0 0 1.5px var(--danger); }
+.tg-btn.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1.5px var(--stroke); }
+.swatches { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.sw { width: 30px; height: 30px; border-radius: 50%; box-shadow: inset 0 0 0 2px var(--card); }
+.sw.on { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--text); }
+.tg-item + .tg-item { box-shadow: 0 -1px 0 var(--line); }
+.tg-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 8px; text-align: left; }
+.tg-dot { flex: none; width: 14px; height: 14px; border-radius: 50%; }
+.tg-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.tg-name { font-weight: 600; }
+.tg-meta { font-size: .78rem; color: var(--muted); }
+.tg-head .chev { color: var(--muted); transition: transform .15s; }
+.tg-item.open .chev { transform: rotate(90deg); }
+.tg-editor { padding: 2px 8px 14px; }
+.tg-editor .tg-input { width: 100%; }
+.tg-actions { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; }
+.tg-actions .tg-btn { flex: 1; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }

@@ -1,0 +1,6 @@
+_site/
+node_modules/
+.DS_Store
+
+# personal expense notes (used by the local parser test only)
+test fomat .md
