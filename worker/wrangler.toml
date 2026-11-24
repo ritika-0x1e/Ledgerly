@@ -5,7 +5,7 @@ compatibility_date = "2025-01-01"
 
 [vars]
 # Where the app lives (your GitHub Pages address, ending in "/").
-APP_URL = "https://ritika-0x1e.github.io/ledgerly/"
+APP_URL = "https://ritika-0x1e.github.io/Ledgerly/"
 
 # Make it with: npx wrangler kv namespace create TOKENS   (then paste the id it prints)
 [[kv_namespaces]]
