@@ -43,6 +43,8 @@ header h1 { flex: 1; font-size: 1.25rem; font-weight: 700; padding-left: 4px; co
 .menu button:active { background: var(--hover); }
 .menu > * + * { box-shadow: 0 -1px 0 var(--line); }
 .menu-note { padding: 8px 16px 12px; font-size: .75rem; color: var(--muted); }
+.menu-note + .menu-link { box-shadow: none; }   /* sits with the note, no line between */
+.menu-link { display: block; padding: 0 16px 12px; margin-top: -6px; font-size: .75rem; color: var(--muted); }
 
 .hint { color: var(--muted); font-size: .85rem; margin: 4px 0 12px; }
 .empty { text-align: center; color: var(--muted); padding: 22px 0; }
