@@ -124,7 +124,6 @@ change your Google password, or don't use the app for 6 months.
   - `CLOUDFLARE_ACCOUNT_ID`: on the Cloudflare dashboard, **Workers & Pages** shows it on the right.
   - `CLOUDFLARE_API_TOKEN`: **My Profile → API Tokens → Create Token → "Edit Cloudflare Workers"** template.
   The Google client ID and secret stay in Cloudflare (`wrangler secret put`); GitHub never needs them.
-- `test fomat .md` (personal notes) is in `.gitignore`; the parser test skips itself when it isn't there.
 
 ## Your data
 - Stored only on that phone, in that browser or installed app; it is not shared between devices.
@@ -133,7 +132,7 @@ change your Google password, or don't use the app for 6 months.
 - Anyone who unlocks your phone can open the app, so rely on your phone's lock.
 
 ## Development
-- `node test/format.test.js` checks the parser and sums against the sample notes (`test fomat .md`).
+- `node test/format.test.js` checks the parser and sums against a made-up sample notebook (`test/sample.txt`).
 - Serve locally with `python3 -m http.server` and open `http://localhost:8000`.
 - App icon options: `icons/options/index.html`; `python3 icons/options/make.py a|b|c` remakes the icons.
 - After changing files the app caches, bump `CACHE` in `sw.js`.
