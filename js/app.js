@@ -77,8 +77,8 @@ function chooseCurrency(firstRun) {
 // ---------- tags ----------
 // Each tag is a section of the expense area: { id (never changes), name, color }. The notebook
 // and the Totals links point at the id, so renaming a tag keeps everything joined up.
-const BASE_TAGS = [{ id: "regular", name: "Regular", color: "#2f6fdc" }, { id: "major", name: "Major", color: "#c2410c" }];
-const TAG_PALETTE = ["#2f6fdc", "#c2410c", "#0f766e", "#a21caf", "#b91c1c", "#4d7c0f", "#0369a1", "#7c3aed", "#a16207"];
+const BASE_TAGS = [{ id: "regular", name: "Regular", color: "#3a6b9a" }, { id: "major", name: "Major", color: "#c2410c" }];
+const TAG_PALETTE = ["#3a6b9a", "#c2410c", "#0f766e", "#a21caf", "#b91c1c", "#4d7c0f", "#0369a1", "#7c3aed", "#a16207"];
 const validTags = (v) => (Array.isArray(v) ? v.filter((t) => t && typeof t.id === "string" && typeof t.name === "string" && /^#[0-9a-f]{6}$/i.test(t.color)) : null);
 const TAGS = validTags(readJson("tags")) || BASE_TAGS.map((t) => ({ ...t }));
 const saveTags = () => writeJson("tags", TAGS);

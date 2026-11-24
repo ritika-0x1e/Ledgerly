@@ -1,18 +1,18 @@
 /* Two looks: light is the paper notebook, dark is the same notebook at night. theme.js puts
    data-theme="light|dark" on <html> (System follows the phone). The Tags screen and the menu use
    the same colours on a plainer card style. */
-:root {
-  --bg: #e9e3d5; --paper: #fdf8ea; --card: #fdf8ea; --ink: #1b2a49; --text: #1b2a49; --muted: #85795f;
-  --rule: rgba(60, 100, 170, .22); --sum: #2f6fdc; --auto: #2f6fdc; --plus: #1f7a46; --hl: rgba(255, 224, 102, .38);
-  --stamp: #9b2c2c; --accent: #9b2c2c; --accent-text: #fff; --danger: #b3261e; --line: var(--rule);
-  --stroke: rgba(0, 0, 0, .1); --hover: rgba(0, 0, 0, .05); --field: #f3ecd9;
+:root {   /* Denim: cool paper, grey-blue ink */
+  --bg: #dde4ea; --paper: #f6f8f9; --card: #f6f8f9; --ink: #1d3245; --text: #1d3245; --muted: #5f7184;
+  --rule: rgba(58, 107, 154, .22); --sum: #3a6b9a; --auto: #3a6b9a; --plus: #2f7a52; --hl: rgba(127, 169, 211, .28);
+  --stamp: #3a6b9a; --accent: #3a6b9a; --accent-text: #fff; --danger: #b3261e; --line: var(--rule);
+  --stroke: rgba(29, 50, 69, .12); --hover: rgba(29, 50, 69, .06); --field: #e9eef2;
   --line-h: 36px;
 }
 :root[data-theme="dark"] {
-  --bg: #040508; --paper: #0d1015; --card: #12161d; --ink: #dde5f0; --text: #dde5f0; --muted: #8791a3;
-  --rule: rgba(150, 180, 225, .17); --sum: #4f8cff; --auto: #7aa7ff; --plus: #6fd39a; --hl: rgba(140, 180, 255, .12);
-  --stamp: #e58a8a; --accent: #e58a8a; --accent-text: #1a0606; --danger: #ff9a92; --line: var(--rule);
-  --stroke: rgba(255, 255, 255, .1); --hover: rgba(255, 255, 255, .06); --field: #1a1f28;
+  --bg: #0a1016; --paper: #111a22; --card: #16212b; --ink: #dbe4ec; --text: #dbe4ec; --muted: #8a9aab;
+  --rule: rgba(127, 169, 211, .17); --sum: #7fa9d3; --auto: #9dbde0; --plus: #6fd39a; --hl: rgba(127, 169, 211, .12);
+  --stamp: #7fa9d3; --accent: #7fa9d3; --accent-text: #0a1016; --danger: #ff9a92; --line: var(--rule);
+  --stroke: rgba(255, 255, 255, .1); --hover: rgba(255, 255, 255, .06); --field: #1a2631;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }

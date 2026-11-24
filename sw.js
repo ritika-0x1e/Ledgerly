@@ -1,5 +1,5 @@
 // Keeps the app available offline. Your expenses are not here; they live in the phone's IndexedDB.
-const CACHE = "ledgerly-shell-v67";
+const CACHE = "ledgerly-shell-v68";
 const SHELL = ["./", "./index.html", "./manifests/main.webmanifest", "./css/app.css",
   "./js/theme.js", "./js/config.js", "./js/format.js", "./js/local.js", "./js/drive.js",
   "./js/app.js", "./js/notebook.js", "./js/tags.js",
