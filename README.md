@@ -22,33 +22,37 @@ On first start the app asks which currency you use (change it later in the menu)
 ## Using the notebook
 Each month is one page; switch months with ‹ › or the month list at the top.
 
-**Totals** (pinned at the top, about a quarter of the screen) holds your monthly sums, for example:
+The notebook is one long page: months scroll by newest first, and older months load as you reach them.
+Each month's name and total stay pinned at the top while you're in that month.
+
+**Totals** (top of each month, as long as its lines) holds your monthly sums, for example:
 ```
-+ 2388.00 Available to spend in October
-- 286.03 Regular expenses
-+ 1800.00 Salary October
-- 500.00 Standard savings
+   2388.00 Available to spend in October
+    286.03 Regular expenses
+  +1800.00 Salary October
+    500.00 Standard savings
 ─────────────
-1567.18 Available to spend in November      ← result: worked out, you only write its label
+   1567.18 Available to spend in November      ← result: worked out, you only write its label
 ```
-- The result is the signed sum of every Totals line with a figure. Its label is yours to write.
+- Figures sit on the left. A figure you start with `+` is money in; every other figure is taken off.
+  Only `+` is shown, so spending reads as a plain amount.
+- The result is the sum of every Totals line with a figure, money in minus the rest. Its label is yours.
 - Lines whose label names a tag ("Regular expenses") get that tag's total filled in, and the first line
   gets last month's result. Filled-in figures are shown in a lighter ink; type your own figure to override.
-  Tap a filled-in figure to choose what it follows (last month, a tag, or nothing).
+  The settings button (top right) lets you choose what each one follows (last month, a tag, or nothing).
 - Salary, savings, rent and other lines are never guessed: they start blank each month.
 - A new month copies last month's Totals labels with the month names moved on ("Salary October" →
   "Salary November").
 
 **Expenses** (below Totals): lines with no tag first, then a section per tag with its total, then the
 month's expense total.
-- Write `4 bus`, `bus 4` or `-4 bus`: it becomes `− 4.00 bus` when you finish the line. Minus is the default;
-  start with `+` for money coming in (`+ 8.50 refund`).
+- Write `4 bus`, `bus 4` or `-4 bus`: it becomes `4.00 bus` when you finish the line, and counts as spent.
+  Start with `+` for money coming in (`+8.50 refund`).
 - Add `#major` to a line to move it to that tag's section (in Totals, it links the line to that tag).
 - Lines without a figure are notes. Blank lines are fine anywhere and never count.
 - `____`, `----`, `====` or `———` on a line draws a rule; rules never affect the sums.
-- When the keyboard is open in the expense area, Totals shrinks to just its result.
 
-**Tags** (menu → Tags): Regular and Major to start with; add, rename, recolour, reorder or delete.
+**Tags** (settings button, top right): Regular and Major to start with; add, rename, recolour, reorder or delete.
 Tag names match by their words only, so `EXPENSES: Regular`, `(regular)` and `REGULAR -` are all Regular.
 
 ## Import and export

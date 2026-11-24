@@ -72,7 +72,15 @@ const drive = (() => {
     set(K.folder, id);
     return id;
   }
+  // The month's file already in the folder (made from another browser or phone, or before a
+  // reconnect), so it is updated instead of a second copy being made.
+  async function findFile(name, parent) {
+    const q = encodeURIComponent(`name='${name.replace(/['\\]/g, "\\$&")}' and '${parent}' in parents and trashed=false`);
+    const found = await gapi("GET", `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&orderBy=createdTime&spaces=drive`);
+    return found.files && found.files[0] ? found.files[0].id : null;
+  }
   async function upload(name, text, fileId, parent) {
+    if (!fileId) fileId = await findFile(name, parent);
     if (fileId) {
       try {
         await gapi("PATCH", `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media&fields=id`, text, { "Content-Type": "text/plain; charset=utf-8" });
@@ -106,7 +114,8 @@ const drive = (() => {
       }
       set(K.last, String(Date.now()));
       set(K.error, null);
-      if (opts.manual) toast(todo.length ? `Backed up ${todo.length} month${todo.length === 1 ? "" : "s"} to Drive` : "Drive is up to date");
+      // Automatic backups say so too when they uploaded something and the app is on screen.
+      if (opts.manual || (todo.length && !document.hidden)) toast(todo.length ? `Backed up ${todo.length} month${todo.length === 1 ? "" : "s"} to Drive` : "Drive is up to date");
     })().catch((err) => {
       if (err.status === 404) set(K.folder, null);    // folder gone: make it again next time
       set(K.error, err.message);

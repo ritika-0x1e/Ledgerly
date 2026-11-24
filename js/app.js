@@ -139,6 +139,7 @@ $("export-txt").addEventListener("click", async () => {
     const comps = computeAll(months, TAGS);
     download(`expenses-${todayStr()}.txt`, months.map((m) => monthToText(m, TAGS, comps.get(m.ym))).join("\n"), "text/plain");
     localStorage.setItem("lastDownload", String(Date.now()));
+    toast(`Downloaded ${months.length} month${months.length === 1 ? "" : "s"} as text`);
   } catch (err) { toast(err.message); }
 });
 $("export-csv").addEventListener("click", async () => {
@@ -147,6 +148,7 @@ $("export-csv").addEventListener("click", async () => {
     if (!months.length) { toast("Nothing written yet"); return; }
     download(`expenses-${todayStr()}.csv`, monthsToCsv(months, TAGS, computeAll(months, TAGS)), "text/csv");
     localStorage.setItem("lastDownload", String(Date.now()));
+    toast(`Downloaded ${months.length} month${months.length === 1 ? "" : "s"} as CSV`);
   } catch (err) { toast(err.message); }
 });
 
@@ -184,7 +186,6 @@ async function importText(text, filename) {
   }
   await store.put(...chosen);
   toast(`Imported ${chosen.length} month${chosen.length === 1 ? "" : "s"}${newTags ? `, ${newTags} new tag${newTags === 1 ? "" : "s"}` : ""}`);
-  nb.ym = chosen[chosen.length - 1].ym;
   return chosen.length;
 }
 $("import").addEventListener("click", () => $("import-file").click());
@@ -194,8 +195,9 @@ $("import-file").addEventListener("change", async (e) => {
   if (!file) return;
   try {
     if (file.size > 5e6) throw new Error("That file is too big");
-    await importText(await file.text(), file.name);
+    const n = await importText(await file.text(), file.name);
     await show(HOME);
+    if (!n) toast("Nothing imported");
   } catch (err) { toast(err.message); }
 });
 
@@ -212,7 +214,7 @@ function drawMenu() {
 }
 $("menu-btn").addEventListener("click", (e) => { e.stopPropagation(); drawMenu(); $("menu").hidden = !$("menu").hidden; });
 $("menu").addEventListener("click", (e) => e.stopPropagation());
-document.addEventListener("click", () => { $("menu").hidden = true; });
+document.addEventListener("click", () => { $("menu").hidden = true; closePop(); });
 for (const b of $("menu").querySelectorAll("button")) b.addEventListener("click", () => { if (b.id !== "theme-btn") $("menu").hidden = true; });
 
 $("drive-btn").addEventListener("click", async () => {
@@ -226,7 +228,7 @@ $("drive-off").addEventListener("click", async () => {
   await drive.disconnect();
   toast("Google Drive disconnected");
 });
-$("currency-btn").addEventListener("click", async () => { if (await chooseCurrency(false)) await show(currentView); });
+$("currency-btn").addEventListener("click", async () => { const c = await chooseCurrency(false); if (c) { await show(currentView); toast(`Currency set to ${c}`); } });
 $("theme-btn").addEventListener("click", () => {
   const next = THEMES[(THEMES.indexOf(themeName()) + 1) % THEMES.length];
   try { localStorage.setItem("theme", next); } catch { /* storage full */ }
@@ -235,33 +237,46 @@ $("theme-btn").addEventListener("click", () => {
   drawMenu();
 });
 
-// ---------- views ----------
-const TITLES = { notebook: "Expenses", tags: "Tags" };
+// ---------- settings popover: which Totals lines fill in, and the tags ----------
+async function openPop() {
+  await flushSave();
+  const ym = monthInView();
+  $("pop-links-title").textContent = `Lines that fill in, ${monthTitle(ym)}`;
+  const rows = linkChoices(ym);
+  $("pop-links").replaceChildren(...(rows.length ? rows : [el("p", { class: "hint", text: "Every Totals line this month has its figure written in." })]));
+  await renderTags();
+  $("pop").hidden = false;
+  $("set-btn").setAttribute("aria-expanded", "true");
+}
+function closePop() {
+  if ($("pop").hidden) return;
+  $("pop").hidden = true;
+  $("set-btn").setAttribute("aria-expanded", "false");
+}
+$("set-btn").addEventListener("click", (e) => {
+  e.stopPropagation();
+  $("menu").hidden = true;
+  if ($("pop").hidden) openPop().catch((err) => toast(err.message)); else closePop();
+});
+$("pop").addEventListener("click", (e) => e.stopPropagation());
+document.addEventListener("keydown", (e) => { if (e.key === "Escape") { closePop(); $("menu").hidden = true; } });
+
+// ---------- the screen ----------
 const HOME = "notebook";
 let currentView = HOME;
 
-// The phone's status bar takes the colour of the screen's header (meta theme-color).
+// The phone's status bar takes the colour of the screen behind the header (meta theme-color).
 function syncThemeColor() {
   const bg = getComputedStyle(document.body).backgroundColor;
   document.querySelector('meta[name="theme-color"]').content = bg;
 }
 matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => setTimeout(syncThemeColor));
 
-async function show(name) {
-  currentView = name;
-  history.replaceState(null, "", name === HOME ? location.pathname + location.search : `#${name}`);
-  for (const v of Object.keys(TITLES)) $(`view-${v}`).hidden = v !== name;
-  $("title").textContent = TITLES[name];
-  $("back").hidden = name === HOME;
-  document.body.classList.toggle("nb", name === HOME);
+async function show() {
+  document.body.classList.add("nb");
   syncThemeColor();
-  try {
-    if (name === HOME) await renderNotebook();
-    else { await flushSave(); await renderTags(); }
-  } catch (err) { console.error(err); toast(err.message); }
+  try { await renderNotebook(); } catch (err) { console.error(err); toast(err.message); }
 }
-$("back").addEventListener("click", () => show(HOME));
-$("go-tags").addEventListener("click", () => show("tags"));
 
 // ---------- boot ----------
 async function init() {
@@ -275,8 +290,8 @@ async function init() {
   const driveMsg = drive.takeKeyFromUrl();
   $("app").hidden = false;
   if (!CURRENCY) await chooseCurrency(true);
-  const h = location.hash.slice(1);
-  await show(Object.hasOwn(TITLES, h) ? h : HOME);
+  if (location.hash === "#tags") history.replaceState(null, "", location.pathname + location.search);
+  await show(HOME);
   if (driveMsg) toast(driveMsg);
   drive.backup({ quiet: true, daily: true });
 }

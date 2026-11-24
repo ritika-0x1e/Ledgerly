@@ -1,21 +1,24 @@
 "use strict";
 
-// The notebook: one month at a time, like a page of the user's paper notebook.
-//   Totals (pinned at the top): freehand lines, then a ruled result row whose figure is worked out.
-//   Expenses (scrolls below): lines without a tag first, then one section per tag, each with its
-//   total, then the total of the whole expense area.
+// The notebook: the months run on as one long scroll, newest first, like the pages of a paper
+// notebook. Each month is a sheet with its name and total pinned at the top while you are in it:
+//   Totals: freehand lines, then the result line whose figure is worked out;
+//   then the lines without a tag, then one section per tag with its total, then the expenses total.
 // Every part is plain ruled paper: a see-through text box over a drawn copy of the text (the
 // "mirror"), so writing feels like a notes app. A finished line (Enter, or leaving the paper) is
-// tidied to "− 4.00 bus"; "#major" in a line moves it to that tag's section. Pasting old notes
-// runs the same clean-up as Import.
+// tidied to "    4.00 bus" (figure first; only a "+" you type is shown). "#major" in a line moves it
+// to that tag's section. Pasting old notes runs the same clean-up as Import.
+// Which Totals lines fill themselves in, and the tags, are changed in the settings popover.
 
-const nb = { months: new Map(), ym: null, comps: new Map(), areas: [], dirty: new Set(), timer: 0, saving: Promise.resolve() };
-const LINE = 36;   // px between the rules; matches --line in app.css
+const nb = { months: new Map(), comps: new Map(), yms: [], shown: 0, cards: new Map(), areas: [], dirty: new Set(),
+  timer: 0, saving: Promise.resolve(), observer: null, tidied: false, announce: false, changed: false };
+const LINE = 32;   // px between the rules; matches --line-h in app.css
 
 // ---------- months ----------
 const ymAdd = (ym, n) => { const d = new Date(+ym.slice(0, 4), +ym.slice(5) - 1 + n, 1); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}`; };
 const blankMonth = (ym) => ({ ym, totals: "", links: [], resultLabel: "", untagged: "", sections: {} });
 const savedYms = () => [...nb.months.values()].filter((m) => !m.unsaved).map((m) => m.ym).sort();
+const longMonth = (ym) => new Date(+ym.slice(0, 4), +ym.slice(5) - 1, 1).toLocaleDateString(undefined, { month: "long", year: "numeric" });
 
 // A month that isn't stored yet is made up from the month before it (or the starter layout for
 // the very first one). It is only stored once something is written on it.
@@ -27,201 +30,222 @@ function monthFor(ym) {
   nb.months.set(ym, m);
   return m;
 }
-function monthRange() {
+// Every month from the newest (this month, or a later one already written) back to the oldest.
+function monthList() {
   const s = savedYms();
-  const lo = s.length && s[0] < currentYm() ? s[0] : currentYm();
   const hi = s.length && s[s.length - 1] > currentYm() ? s[s.length - 1] : currentYm();
+  const lo = s.length && s[0] < hi ? s[0] : hi;
   const out = [];
-  for (let ym = ymAdd(lo, -1); ym <= ymAdd(hi, 1); ym = ymAdd(ym, 1)) out.push(ym);
+  for (let ym = hi; ym >= lo; ym = ymAdd(ym, -1)) out.push(ym);
   return out;
 }
-const recompute = () => { nb.comps = computeAll([...nb.months.values()], TAGS); return nb.comps.get(nb.ym); };
+const recompute = () => { nb.comps = computeAll([...nb.months.values()], TAGS); };
 
-// ---------- loading ----------
+// Months saved before figures were written in a column ("− 4.00 bus") are tidied once.
+async function tidyStored() {
+  if (nb.tidied) return;
+  nb.tidied = true;
+  const tidy = (text, col) => String(text || "").split("\n").map((l) => normalizeLine(l, col)).join("\n");
+  const changed = [];
+  for (const m of nb.months.values()) {
+    const next = { totals: tidy(m.totals, true), untagged: tidy(m.untagged), sections: {} };
+    for (const [id, t] of Object.entries(m.sections)) next.sections[id] = tidy(t);
+    if (next.totals !== m.totals || next.untagged !== m.untagged || Object.keys(next.sections).some((id) => next.sections[id] !== m.sections[id])) {
+      Object.assign(m, next);
+      changed.push(m);
+    }
+  }
+  if (changed.length) await store.put(...changed).catch(() => {});
+}
+
+// ---------- drawing ----------
 async function renderNotebook() {
   await nb.saving;
   nb.months = new Map((await store.all()).map((m) => [m.ym, m]));
-  if (!nb.ym) nb.ym = currentYm();
-  drawMonth();
+  await tidyStored();
+  redraw();
 }
 
-function goMonth(ym) {
-  flushSave();
-  // An untouched made-up month is forgotten when you leave it.
-  const m = nb.months.get(nb.ym);
-  if (m && m.unsaved && !nb.dirty.has(nb.ym)) nb.months.delete(nb.ym);
-  nb.ym = ym;
-  drawMonth();
-  $("nb-exp") && ($("nb-exp").scrollTop = 0);
-}
-
-function drawMonth() {
-  const m = monthFor(nb.ym);
-  recompute();
+// Draws the months again (after a paste, a tag change or an import), keeping your place.
+function redraw() {
+  const y = window.scrollY;
+  nb.yms = monthList();
+  for (const ym of nb.yms) monthFor(ym);
+  nb.shown = Math.min(nb.yms.length, Math.max(nb.shown, 2));
+  nb.cards = new Map();
   nb.areas = [];
-
-  // month bar: ‹ Sept 2026 ›   total
-  const range = monthRange();
-  const pick = el("select", { class: "nb-pick", "aria-label": "Month" },
-    ...range.slice().reverse().map((ym) => el("option", { value: ym, text: monthTitle(ym) })));
-  pick.value = nb.ym;
-  pick.addEventListener("change", () => goMonth(pick.value));
-  const prev = el("button", { type: "button", class: "nb-arrow", "aria-label": "Month before", text: "‹" });
-  const next = el("button", { type: "button", class: "nb-arrow", "aria-label": "Month after", text: "›" });
-  prev.disabled = nb.ym <= range[0];
-  next.disabled = nb.ym >= range[range.length - 1];
-  prev.addEventListener("click", () => goMonth(ymAdd(nb.ym, -1)));
-  next.addEventListener("click", () => goMonth(ymAdd(nb.ym, 1)));
-  const total = el("span", { id: "nb-total", class: "nb-total" });
-  const bar = el("div", { class: "nb-bar" }, prev, pick, next, total);
-
-  // Totals
-  const tArea = paper("totals", null, "Totals", 3);
-  const linkBar = el("div", { id: "nb-linkbar", class: "nb-linkbar", hidden: "" });
-  const label = el("input", { class: "nb-reslabel", maxlength: "200", autocomplete: "off", enterkeyhint: "done",
-    placeholder: "Available to spend next month", "aria-label": "Result label" });
-  label.value = m.resultLabel || "";
-  label.addEventListener("input", () => { m.resultLabel = label.value; schedule(); });
-  label.addEventListener("keydown", (e) => { if (e.key === "Enter") label.blur(); });
-  const result = el("div", { class: "nb-result" }, el("span", { id: "nb-resfig", class: "nb-fig" }), label);
-  const totals = el("div", { class: "nb-totals" },
-    el("div", { class: "nb-tscroll" }, el("div", { class: "nb-cap", text: "Totals" }), tArea.node), linkBar, result);
-
-  // Expenses
-  const exp = el("div", { id: "nb-exp", class: "nb-exp" }, paper("untagged", null, "Expenses without a tag", 2).node);
-  for (const t of TAGS) {
-    const a = paper("tag", t.id, `${t.name} expenses`, 2);
-    const sec = el("section", { class: "nb-sec" },
-      el("h3", { class: "nb-sechead" }, el("span", { text: `EXPENSES: ${t.name}` })), a.node,
-      el("div", { class: "nb-foot" }, el("span", { class: "nb-fig", "data-tag": t.id }), el("span", { text: "total" })));
-    sec.style.setProperty("--tc", t.color);
-    exp.append(sec);
-  }
-  exp.append(el("div", { class: "nb-foot nb-grand" }, el("span", { id: "nb-expfig", class: "nb-fig" }), el("span", { text: "expenses total" })));
-
-  $("nb-page").replaceChildren(bar, el("div", { class: "nb-book" }, totals, exp));
-  for (const a of nb.areas) { a.area.value = textOf(a); fit(a); }
+  recompute();
+  $("nb-page").replaceChildren(...nb.yms.slice(0, nb.shown).map(drawCard));
+  afterDraw();
+  window.scrollTo(0, y);
+  drawMore();
+}
+function afterDraw() {
+  for (const a of nb.areas) if (!a.drawn) { a.drawn = true; a.area.value = textOf(a); fit(a); }
   const first = nb.areas.find((a) => a.kind === "untagged");
   if (first) first.area.placeholder = "write here, like: bus 4";
-  tArea.area.placeholder = "+ 2000 Salary";
   showTotals();
 }
 
+// Older months come in as you scroll down to them (the button is there too).
+function drawMore() {
+  const more = $("nb-more");
+  more.replaceChildren();
+  if (nb.shown >= nb.yms.length) return;
+  const btn = el("button", { type: "button", text: `Turn back to ${longMonth(nb.yms[nb.shown])}` });
+  btn.addEventListener("click", loadOlder);
+  more.append(btn);
+  if (!("IntersectionObserver" in window)) return;
+  if (!nb.observer) nb.observer = new IntersectionObserver((entries) => { if (entries.some((e) => e.isIntersecting)) loadOlder(); }, { rootMargin: "400px 0px" });
+  nb.observer.disconnect();
+  nb.observer.observe(more);   // observing again re-checks, so a short month keeps loading
+}
+function loadOlder() {
+  if (nb.shown >= nb.yms.length) return;
+  $("nb-page").append(drawCard(nb.yms[nb.shown]));
+  nb.shown++;
+  afterDraw();
+  drawMore();
+}
+
+// One month: a sheet with its name and total pinned on top while you scroll through it.
+function drawCard(ym) {
+  const m = monthFor(ym);
+  const card = { ym, total: el("span", { class: "d-monthtotal" }), tagFigs: new Map(), expFig: figNode(), resFig: figNode(), totals: null };
+
+  const tArea = paper(ym, "totals", null, `Totals, ${monthTitle(ym)}`, 1);
+  card.totals = tArea;
+  tArea.area.placeholder = "+2000 Salary";
+  const label = el("input", { class: "d-reslabel", maxlength: "200", autocomplete: "off", enterkeyhint: "done",
+    placeholder: "Available to spend next month", "aria-label": `Result label, ${monthTitle(ym)}` });
+  label.value = m.resultLabel || "";
+  label.addEventListener("input", () => { m.resultLabel = label.value; schedule(ym); });
+  label.addEventListener("keydown", (e) => { if (e.key === "Enter") label.blur(); });
+  label.addEventListener("blur", () => flushSave({ announce: true }));
+
+  const sheet = el("div", { class: "d-page" },
+    el("section", { class: "d-sec d-totals" }, tArea.node, el("div", { class: "d-secfoot d-result" }, card.resFig.node, label)),
+    el("section", { class: "d-sec" }, paper(ym, "untagged", null, `Expenses without a tag, ${monthTitle(ym)}`, 2).node));
+  for (const t of TAGS) {
+    const fig = figNode();
+    card.tagFigs.set(t.id, fig);
+    const sec = el("section", { class: "d-sec" },
+      el("h3", { class: "d-sechead", text: t.name }), paper(ym, "tag", t.id, `${t.name}, ${monthTitle(ym)}`, 1).node,
+      el("div", { class: "d-secfoot" }, fig.node, el("span", { class: "d-footlabel", text: "total" })));
+    sec.style.setProperty("--tc", t.color);
+    sheet.append(sec);
+  }
+  sheet.append(el("div", { class: "d-total" }, card.expFig.node, el("span", { class: "d-footlabel", text: "spent this month" })));
+
+  nb.cards.set(ym, card);
+  return el("section", { class: "d-monthgroup", "data-ym": ym },
+    el("h2", { class: "d-month" }, el("span", { class: "d-monthname", text: longMonth(ym) }), card.total), sheet);
+}
+
+// A worked-out figure in the figure column, with a short stroke over it like a hand-written sum.
+function figNode() {
+  const padN = el("span", { class: "d-pad" }), sum = el("span", { class: "d-sum" });
+  return { node: el("span", { class: "d-figcol" }, padN, sum, " "), set(text) {
+    const t = text.replace(/^ +/, "");
+    padN.textContent = FIG.repeat(Math.max(0, COL - t.length));
+    sum.textContent = t;
+  } };
+}
+
 // ---------- the paper ----------
-function paper(kind, id, name, min) {
+function paper(ym, kind, id, name, min) {
   const area = el("textarea", { class: "d-area", rows: "1", autocomplete: "off", autocapitalize: "sentences", spellcheck: "false",
     enterkeyhint: "enter", "aria-label": name });
   const mirror = el("div", { class: "d-mirror", "aria-hidden": "true" });
-  const a = { kind, id, area, mirror, min, node: el("div", { class: "d-paper" }, mirror, area) };
+  const a = { ym, kind, id, area, mirror, min, node: el("div", { class: "d-paper" }, mirror, area) };
   nb.areas.push(a);
   wireArea(a);
   return a;
 }
-const month = () => nb.months.get(nb.ym);
-const textOf = (a) => { const m = month(); return a.kind === "totals" ? m.totals : a.kind === "untagged" ? m.untagged : m.sections[a.id] || ""; };
-function setText(a, text, m = month()) {
+const monthOf = (a) => nb.months.get(a.ym);
+const textOf = (a) => { const m = monthOf(a); return a.kind === "totals" ? m.totals : a.kind === "untagged" ? m.untagged : m.sections[a.id] || ""; };
+function setText(a, text, m = monthOf(a)) {
   if (a.kind === "totals") { m.links = spliceLinks(m.links, m.totals, text); m.totals = text; }
   else if (a.kind === "untagged") m.untagged = text;
   else m.sections[a.id] = text;
 }
-const areaFor = (kind, id) => nb.areas.find((a) => a.kind === kind && (id == null || a.id === id));
+const areaFor = (ym, kind, id) => nb.areas.find((a) => a.ym === ym && a.kind === kind && (id == null || a.id === id));
 
 // The paper grows with what is written, keeping one empty line to write on below it.
 function fit(a) {
   if (!a.area.isConnected) return;
-  const box = a.area.closest(".nb-exp, .nb-tscroll");
-  const y = box ? box.scrollTop : 0;
+  const y = window.scrollY;
   a.area.style.height = "0";
   const extra = a.area.value === "" || a.area.value.endsWith("\n") ? 0 : LINE;
   a.area.style.height = `${Math.max(a.min * LINE, a.area.scrollHeight + extra)}px`;
-  if (box) box.scrollTop = y;
+  if (window.scrollY !== y) window.scrollTo(0, y);
   drawMirror(a);
 }
 
-// The copy under the text box: the same characters (so the caret lines up), with the sign and
-// figure inked, rules drawn as rules, and the filled-in figures of linked Totals lines on the right.
-const FORMATTED = /^([+−]) ([ \d.]+)(?=$| )/;
+// The copy under the text box: the same characters (so the caret lines up), with figures inked
+// and the figures of linked Totals lines drawn into their empty figure column.
+const FIGURE = /^( *)(\+?)(\d[\d.]*)(?= |$)/;
 function drawMirror(a) {
-  const c = nb.comps.get(nb.ym);
+  const c = nb.comps.get(a.ym);
   const rows = a.area.value.split("\n").map((line, i) => {
     if (!line.trim()) return el("div", { class: "d-ml", text: "​" });
     if (isMarker(line)) return el("div", { class: "d-ml d-rule", text: line });
     const row = el("div", { class: "d-ml" });
-    const f = line.match(FORMATTED);
-    if (f) {
-      row.append(el("span", { class: f[1] === "+" ? "d-plus" : "d-minus", text: f[1] }), " ",
-        el("span", { class: "d-num", text: f[2] }), line.slice(f[0].length));
-    } else row.append(line);
     const v = a.kind === "totals" && c && c.vals[i];
-    if (v && v.auto) row.prepend(el("span", { class: "d-auto", title: v.auto === "carry" ? "From last month" : "From the expenses", text: signedLine(v.v, "").trim() }));
+    if (v && v.auto && line.startsWith(BLANK)) {
+      row.append(el("span", { class: "d-auto", text: v.auto === "tag" ? spentFig(v.v) : balanceFig(v.v) }), line.slice(COL));
+      return row;
+    }
+    if (line.startsWith(BLANK)) {   // a Totals line still waiting for its figure
+      row.append(BLANK, line.slice(COL));
+      return row;
+    }
+    const f = line.match(FIGURE);
+    if (f) {
+      row.append(f[1], ...(f[2] ? [el("span", { class: "d-plus", text: "+" })] : []), el("span", { class: "d-num", text: f[3] }), line.slice(f[0].length));
+    } else row.append(line);
     return row;
   });
   a.mirror.replaceChildren(...rows);
 }
 window.addEventListener("resize", () => nb.areas.forEach(fit));
 
-// Totals that follow the page: section totals, the expense total, the result and the month's total.
+// Worked-out figures: section totals, the month's spending, the result and the month's total.
 function showTotals() {
-  const c = recompute();
-  const fig = (v) => signedLine(v, "").trim();
-  for (const node of document.querySelectorAll(".nb-fig[data-tag]")) node.textContent = fig(c.tagTotals[node.dataset.tag] || 0);
-  $("nb-expfig").textContent = fig(c.expenses);
-  $("nb-resfig").textContent = c.result === null ? "—" : fig(c.result);
-  $("nb-total").textContent = money(c.total);
-  const t = areaFor("totals");
-  if (t) drawMirror(t);
-  showLinkBar();
+  recompute();
+  for (const [ym, card] of nb.cards) {
+    const c = nb.comps.get(ym);
+    for (const [id, fig] of card.tagFigs) fig.set(spentFig(c.tagTotals[id] || 0));
+    card.expFig.set(spentFig(c.expenses));
+    card.resFig.set(c.result === null ? "" : balanceFig(c.result));
+    card.total.textContent = c.result !== null ? money(c.result) : money(-c.expenses);
+    drawMirror(card.totals);
+  }
 }
-
-// ---------- linking a Totals line ----------
-// With the caret on a Totals line that has no figure: "Fills in: [Regular total ▾]".
-function caretLine(area) { return area.value.slice(0, area.selectionStart).split("\n").length - 1; }
-function showLinkBar() {
-  const bar = $("nb-linkbar"), a = areaFor("totals");
-  if (!bar || !a) return;
-  const i = caretLine(a.area);
-  const v = document.activeElement === a.area && nb.comps.get(nb.ym).vals[i];
-  if (!v || v.v !== null && !v.auto) { bar.hidden = true; return; }
-  const sel = el("select", { "aria-label": "This line fills in" },
-    el("option", { value: "prev", text: "Last month's result" }),
-    ...TAGS.map((t) => el("option", { value: `tag:${t.id}`, text: `${t.name} total` })),
-    el("option", { value: "none", text: "Nothing (I'll write the figure)" }));
-  sel.value = v.link || "none";
-  sel.addEventListener("change", () => {
-    const m = month();
-    while (m.links.length <= i) m.links.push(null);
-    m.links[i] = sel.value;
-    schedule();
-    showTotals();
-    a.area.focus();
-  });
-  bar.replaceChildren(el("span", { text: "This line fills in" }), sel);
-  bar.hidden = false;
-}
-document.addEventListener("selectionchange", () => {
-  const a = nb.areas.find((x) => x.area === document.activeElement);
-  if (a && a.kind === "totals") showLinkBar();
-});
 
 // ---------- writing ----------
+const caretLine = (area) => area.value.slice(0, area.selectionStart).split("\n").length - 1;
 function wireArea(a) {
   const area = a.area;
-  const live = () => nb.areas.includes(a);   // false once the month has been redrawn
+  const live = () => nb.areas.includes(a);   // false once the months have been redrawn
   area.addEventListener("input", (e) => {
     if (!live()) return;
     setText(a, area.value);
-    if (e.inputType === "insertLineBreak" || e.inputType === "insertParagraph") finishLines(a, caretLine(area) - 1);
+    if (e.inputType === "insertLineBreak" || e.inputType === "insertParagraph") {
+      const done = caretLine(area) - 1;
+      const had = parseLine(area.value.split("\n")[done] || "");
+      finishLines(a, done);
+      if (had && had.paise != null) nb.announce = true;
+    }
     fit(a);
     showTotals();
-    schedule();
+    schedule(a.ym);
+    if (nb.announce) flushSave();   // a finished entry is saved (and says so) straight away
   });
-  area.addEventListener("focus", () => { if (a.kind === "totals") showLinkBar(); });
   area.addEventListener("blur", () => {
     if (!live()) return;
     finishLines(a);
-    flushSave();
-    // keep the link bar while its menu is being used
-    setTimeout(() => { if (!$("nb-linkbar")?.contains(document.activeElement)) $("nb-linkbar") && ($("nb-linkbar").hidden = true); }, 0);
+    flushSave({ announce: true });
   });
   area.addEventListener("paste", (e) => {
     const text = e.clipboardData && e.clipboardData.getData("text/plain");
@@ -243,37 +267,34 @@ function wireArea(a) {
   });
 }
 
-// Tidies finished lines ("bus 4" -> "− 4.00 bus") and acts on "#tag" marks: in the expense area
+// Tidies finished lines ("bus 4" -> "    4.00 bus") and acts on "#tag" marks: in the expense area
 // the line moves to that tag's section; in Totals the line is linked to that tag's total.
 // only: the index of the one line to finish (after Enter), or undefined for all of them.
 function finishLines(a, only) {
-  const area = a.area, m = month();
+  const area = a.area, m = monthOf(a), totals = a.kind === "totals";
   const lines = area.value.split("\n");
   const caret = area.selectionStart;
   const cLine = area.value.slice(0, caret).split("\n").length - 1;
   const cCol = caret - area.value.lastIndexOf("\n", caret - 1) - 1;
   const moves = [];
-  const links = a.kind === "totals" ? spliceLinks(m.links, m.totals, area.value) : null;
+  const links = totals ? spliceLinks(m.links, m.totals, area.value) : null;
   const out = [];
   let caretShift = 0;
   lines.forEach((line, i) => {
     if (only != null && i !== only) { out.push(line); return; }
     const mark = takeTagMark(line, TAGS);
-    if (mark.tag && a.kind !== "totals" && !(a.kind === "tag" && a.id === mark.tag.id)) {
+    if (mark.tag && !totals && !(a.kind === "tag" && a.id === mark.tag.id)) {
       if (mark.text) moves.push({ tag: mark.tag, text: normalizeLine(mark.text) });
       if (i < cLine) caretShift++;
       return;                                   // the line leaves this paper
     }
-    if (mark.tag && a.kind === "totals") links[i] = `tag:${mark.tag.id}`;
-    out.push(normalizeLine(mark.tag ? mark.text : line));
+    if (mark.tag && totals) links[i] = `tag:${mark.tag.id}`;
+    out.push(normalizeLine(mark.tag ? mark.text : line, totals));
   });
   const text = out.join("\n");
   if (text === area.value && !moves.length) return;
-  if (links) {
-    // links follow their lines; a moved-out line can't happen in Totals, so the count is the same
-    m.links = links;
-    m.totals = text;
-  } else setText(a, text);
+  if (links) { m.links = links; m.totals = text; }   // the line count is unchanged in Totals
+  else setText(a, text);
   area.value = text;
   if (document.activeElement === area) {
     const li = Math.max(0, cLine - caretShift);
@@ -283,19 +304,19 @@ function finishLines(a, only) {
   }
   fit(a);
   for (const mv of moves) {
-    const target = areaFor("tag", mv.tag.id);
-    appendText(target, [mv.text]);
+    appendText(a.ym, areaFor(a.ym, "tag", mv.tag.id), mv.tag.id, [mv.text]);
     toast(`Moved to ${mv.tag.name}`);
   }
   showTotals();
-  schedule();
+  schedule(a.ym);
 }
 
-function appendText(a, lines, m = month()) {
-  const cur = (a ? textOf(a) : "").replace(/\n+$/, "");
+function appendText(ym, a, tagId, lines) {
+  const m = nb.months.get(ym);
+  const cur = String(m.sections[tagId] || "").replace(/\n+$/, "");
   const text = [cur, ...lines].filter((x, i) => i > 0 || x).join("\n");
-  if (a && m === month()) { setText(a, text, m); a.area.value = text; fit(a); }
-  return text;
+  m.sections[tagId] = text;
+  if (a) { a.area.value = text; fit(a); }
 }
 
 // ---------- paste ----------
@@ -305,11 +326,11 @@ function appendText(a, lines, m = month()) {
 // lines and old subtotals are dropped, like Import.
 async function pasteNotes(a, text) {
   const blocks = parseNotes(text, TAGS);
-  const touched = new Set([nb.ym]);
-  let created = [];
+  const touched = new Set([a.ym]);
+  const created = [];
   for (const b of blocks) {
-    const ym = b.ym || nb.ym;
-    const m = b.ym ? monthFor(b.ym) : month();
+    const ym = b.ym || a.ym;
+    const m = monthFor(ym);
     // A pasted month block replaces a made-up month's starter lines instead of being added under them.
     if (b.ym && m.unsaved && !nb.dirty.has(ym)) Object.assign(m, blankMonth(ym), { unsaved: true });
     touched.add(ym);
@@ -317,7 +338,7 @@ async function pasteNotes(a, text) {
       const t = cleanTotals(b.head);
       if (t.lines.length) {
         if (!b.ym) insertAtCaret(a, t.lines);
-        else { const old = m.totals; m.totals = [old.replace(/\n+$/, ""), ...t.lines].filter((x, i) => i > 0 || x).join("\n"); m.links = spliceLinks(m.links, old, m.totals); }
+        else { const old = m.totals; m.totals = appendLinesTo(old, t.lines); m.links = spliceLinks(m.links, old, m.totals); }
       }
       if (t.resultLabel && (b.ym || !m.resultLabel)) m.resultLabel = t.resultLabel;
     } else {
@@ -339,10 +360,10 @@ async function pasteNotes(a, text) {
     }
   }
   for (const ym of touched) { nb.months.get(ym).unsaved = false; nb.dirty.add(ym); }
-  flushSave();
-  drawMonth();
-  const others = [...touched].filter((ym) => ym !== nb.ym).map(monthTitle);
-  toast([others.length ? `Added to ${others.join(", ")}` : "Pasted", created.length ? `new tag${created.length > 1 ? "s" : ""}: ${created.join(", ")}` : ""].filter(Boolean).join(" · "));
+  await flushSave();
+  redraw();
+  const others = [...touched].filter((ym) => ym !== a.ym).map(monthTitle);
+  toast([others.length ? `Added to ${others.join(", ")}` : "Pasted and saved", created.length ? `new tag${created.length > 1 ? "s" : ""}: ${created.join(", ")}` : ""].filter(Boolean).join(" · "));
 }
 const appendLinesTo = (text, lines) => [String(text || "").replace(/\n+$/, ""), ...lines].filter((x, i) => i > 0 || x).join("\n");
 function insertAtCaret(a, lines) {
@@ -350,24 +371,59 @@ function insertAtCaret(a, lines) {
   const s = area.selectionStart, e = area.selectionEnd;
   const head = v.slice(0, s), tail = v.slice(e);
   const ins = (head && !head.endsWith("\n") ? "\n" : "") + lines.join("\n") + (tail && !tail.startsWith("\n") ? "\n" : "");
-  const text = head + ins + tail;
-  setText(a, text);
-  area.value = text;
+  setText(a, head + ins + tail);
+}
+
+// ---------- which Totals lines fill themselves in (shown in the settings popover) ----------
+// The month you are looking at: the one whose name is pinned at the top.
+function monthInView() {
+  for (const node of document.querySelectorAll(".d-monthgroup")) if (node.getBoundingClientRect().bottom > 80) return node.dataset.ym;
+  return nb.yms[0];
+}
+function linkChoices(ym) {
+  const m = nb.months.get(ym), c = nb.comps.get(ym);
+  const rows = [];
+  String(m.totals).split("\n").forEach((line, i) => {
+    const p = parseLine(line), v = c && c.vals[i];
+    if (!p || !v || (v.v !== null && !v.auto)) return;   // lines with a written figure don't fill in
+    const sel = el("select", { class: "pop-select", "aria-label": `${p.label || "Line"} fills in` },
+      el("option", { value: "none", text: "Nothing, I write it" }),
+      el("option", { value: "prev", text: "Last month's result" }),
+      ...TAGS.map((t) => el("option", { value: `tag:${t.id}`, text: `${t.name} total` })));
+    sel.value = v.link || "none";
+    sel.addEventListener("change", () => {
+      while (m.links.length <= i) m.links.push(null);
+      m.links[i] = sel.value;
+      schedule(ym);
+      showTotals();
+      flushSave({ announce: true });
+    });
+    rows.push(el("label", { class: "pop-row" }, el("span", { class: "pop-label", text: p.label || "(no label)" }), sel));
+  });
+  return rows;
 }
 
 // ---------- saving ----------
-function schedule() {
-  nb.dirty.add(nb.ym);
-  const m = month();
+function schedule(ym) {
+  nb.dirty.add(ym);
+  nb.changed = true;   // something new to say "Saved" about
+  const m = nb.months.get(ym);
   if (m) m.unsaved = false;
   clearTimeout(nb.timer);
   nb.timer = setTimeout(flushSave, 800);
 }
-function flushSave() {
+// announce: say "Saved" once a finished line is stored (after Enter on a line with a figure, or
+// on leaving the paper), not for every pause while typing.
+function flushSave(opts = {}) {
   clearTimeout(nb.timer);
   const list = [...nb.dirty].map((ym) => nb.months.get(ym)).filter(Boolean);
   nb.dirty.clear();
-  if (!list.length) return nb.saving;
+  const say = (nb.announce || opts.announce) && nb.changed;
+  if (say) { nb.announce = false; nb.changed = false; }
+  if (!list.length) {
+    if (say) nb.saving.then(() => toast("Saved"));
+    return nb.saving;
+  }
   // Links worked out by matching are kept, so they survive the label being reworded later.
   const comps = computeAll([...nb.months.values()], TAGS);
   for (const m of list) {
@@ -376,6 +432,7 @@ function flushSave() {
   }
   nb.saving = nb.saving.then(() => store.put(...list)).then((saved) => {
     for (const s of saved) { const m = nb.months.get(s.ym); if (m) m.updatedAt = s.updatedAt; }
+    if (say) toast("Saved");
   }).catch((err) => toast(err.message));
   return nb.saving;
 }

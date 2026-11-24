@@ -1,40 +1,39 @@
 /* Two looks: light is the paper notebook, dark is the same notebook at night. theme.js puts
-   data-theme="light|dark" on <html> (System follows the phone). The Tags screen and the menu use
-   the same colours on a plainer card style. */
+   data-theme="light|dark" on <html> (System follows the phone). The menu and the settings popover
+   use the same colours on a plainer card style. */
 :root {   /* Denim: cool paper, grey-blue ink */
   --bg: #dde4ea; --paper: #f6f8f9; --card: #f6f8f9; --ink: #1d3245; --text: #1d3245; --muted: #5f7184;
-  --rule: rgba(58, 107, 154, .22); --sum: #3a6b9a; --auto: #3a6b9a; --plus: #2f7a52; --hl: rgba(127, 169, 211, .28);
+  --rule: rgba(58, 107, 154, .13); --sum: #3a6b9a; --auto: #3a6b9a; --plus: #2f7a52; --hl: rgba(127, 169, 211, .28);
   --stamp: #3a6b9a; --accent: #3a6b9a; --accent-text: #fff; --danger: #b3261e; --line: var(--rule);
   --stroke: rgba(29, 50, 69, .12); --hover: rgba(29, 50, 69, .06); --field: #e9eef2;
-  --line-h: 36px;
+  --line-h: 32px; --band: var(--ink);
 }
 :root[data-theme="dark"] {
   --bg: #0a1016; --paper: #111a22; --card: #16212b; --ink: #dbe4ec; --text: #dbe4ec; --muted: #8a9aab;
-  --rule: rgba(127, 169, 211, .17); --sum: #7fa9d3; --auto: #9dbde0; --plus: #6fd39a; --hl: rgba(127, 169, 211, .12);
+  --rule: rgba(127, 169, 211, .09); --sum: #7fa9d3; --auto: #9dbde0; --plus: #6fd39a; --hl: rgba(127, 169, 211, .12);
   --stamp: #7fa9d3; --accent: #7fa9d3; --accent-text: #0a1016; --danger: #ff9a92; --line: var(--rule);
-  --stroke: rgba(255, 255, 255, .1); --hover: rgba(255, 255, 255, .06); --field: #1a2631;
+  --stroke: rgba(255, 255, 255, .1); --hover: rgba(255, 255, 255, .06); --field: #1a2631; --band: #a9bccf;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 [hidden] { display: none !important; }
 html, body { margin: 0; background: var(--bg); color: var(--text);
   font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
 body { min-height: 100vh; min-height: 100dvh; }
-body.nb { background: var(--paper); }
 button, input, select { font: inherit; color: inherit; }
 button { background: none; border: 0; cursor: pointer; }
 button:disabled { opacity: .35; cursor: default; }
 h1, h2, h3 { margin: 0; }
 h2 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 20px 0 8px; }
 
-#app { max-width: 620px; margin: 0 auto; padding: 0 16px calc(40px + env(safe-area-inset-bottom)); }
+#app { max-width: 560px; margin: 0 auto; padding: 0 16px calc(40px + env(safe-area-inset-bottom)); }
 header { position: sticky; top: 0; z-index: 7; display: flex; align-items: center;
-  gap: 4px; margin: 0 -16px; padding: calc(6px + env(safe-area-inset-top)) 12px 6px; background: var(--bg); }
-body.nb header { background: var(--paper); }
-header h1 { flex: 1; font-size: 1.2rem; font-weight: 800; padding-left: 4px; color: var(--ink); }
+  gap: 4px; margin: 0 -16px; padding: calc(10px + env(safe-area-inset-top)) 16px 10px; background: var(--bg); }
+header h1 { flex: 1; font-size: 1.25rem; font-weight: 700; padding-left: 4px; color: var(--ink); }
 .icon { width: 44px; height: 44px; font-size: 1.7rem; border-radius: 50%; color: var(--ink); }
 .icon:active { background: var(--hover); }
+.icon svg { display: block; margin: auto; }
 .menu { position: absolute; right: 12px; top: calc(52px + env(safe-area-inset-top)); z-index: 30; background: var(--card); color: var(--text);
-  border-radius: 12px; min-width: 230px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 0 0 1px var(--stroke); }
+  border-radius: 14px; min-width: 230px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 0 0 1px var(--stroke); }
 .menu button { display: block; width: 100%; text-align: left; padding: 13px 16px; }
 .menu button:active { background: var(--hover); }
 .menu > * + * { box-shadow: 0 -1px 0 var(--line); }
@@ -45,73 +44,76 @@ header h1 { flex: 1; font-size: 1.2rem; font-weight: 800; padding-left: 4px; col
 
 .toast { font-size: .92rem; position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(24px + env(safe-area-inset-bottom)); z-index: 40;
   display: flex; align-items: center; gap: 14px; max-width: calc(100% - 32px); background: var(--paper); color: var(--ink);
-  padding: 12px 16px; border-radius: 8px; box-shadow: inset 0 0 0 1px var(--stroke), 0 6px 18px rgba(0, 0, 0, .22); }
+  padding: 12px 16px; border-radius: 6px; box-shadow: inset 0 0 0 1px var(--stroke), 0 6px 18px rgba(0, 0, 0, .18); }
 .toast button { color: var(--stamp); font-weight: 700; }
 
-/* ---------- notebook: the page fills the screen; Totals pinned on top, expenses scroll below ---------- */
-body.nb #app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; padding-bottom: 0; }
-body.nb #view-notebook { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-#nb-page { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* ---------- notebook: the old notebook's sheets, one per month, in the Denim colours ---------- */
+body.nb header { position: relative; z-index: 20; background: transparent; }   /* keeps the menu above the sheets */
 
-.nb-bar { flex: none; display: flex; align-items: center; gap: 2px; margin: 0 -8px; padding: 0 0 6px; }
-.nb-arrow { width: 40px; height: 40px; border-radius: 50%; font-size: 1.6rem; line-height: 1; color: var(--ink); }
-.nb-arrow:active { background: var(--hover); }
-.nb-pick { appearance: none; -webkit-appearance: none; border: 0; background: transparent; color: var(--ink);
-  font-size: 1.35rem; font-weight: 800; padding: 4px 6px; border-radius: 8px; max-width: 46%; }
-.nb-pick option { background: var(--card); color: var(--text); }
-.nb-pick:focus-visible { outline: 2px solid var(--sum); }
-.nb-total { margin-left: auto; padding-right: 8px; font-weight: 800; font-size: 1.05rem; color: var(--ink);
-  font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* a month: one continuous sheet, with its name and total pinned while you are in it */
+.d-monthgroup { margin: 0 -8px 22px; border-radius: 18px; overflow: clip; background: var(--paper);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, .08), 0 -1px 0 rgba(0, 0, 0, .05); }
+.d-month { position: sticky; top: 0; z-index: 3; border-radius: 18px 18px 0 0; display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+  margin: 0; padding: 16px; background: var(--band); color: var(--paper); font-size: 1rem; text-transform: none; letter-spacing: normal; }
+.d-monthname { font-size: 1.75rem; font-weight: 800; letter-spacing: -.01em; line-height: 1.15; }
+.d-monthtotal { font-size: 1.2rem; font-weight: 800; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
-.nb-book { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 0 -16px; border-top: 3px solid var(--ink); }
-/* Totals: about a quarter of the page; its lines scroll inside it, the result row always shows */
-.nb-totals { flex: none; height: 27%; min-height: 158px; display: flex; flex-direction: column;
-  background: color-mix(in srgb, var(--paper) 94%, var(--ink)); box-shadow: 0 6px 10px -8px rgba(0,0,0,.35); position: relative; z-index: 2; }
-.nb-tscroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
-.nb-cap { position: sticky; top: 0; z-index: 2; height: 0; overflow: visible; padding: 4px 12px 0; text-align: right; pointer-events: none;
-  font-size: .66rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
-.nb-linkbar { flex: none; display: flex; align-items: center; gap: 8px; padding: 4px 16px; font-size: .8rem; color: var(--muted);
-  border-top: 1px dashed var(--rule); }
-.nb-linkbar select { flex: 1; min-width: 0; height: 32px; border: 0; border-radius: 8px; padding: 0 8px; background: var(--field); color: var(--ink); }
-.nb-result { flex: none; display: flex; align-items: center; gap: 10px; height: calc(var(--line-h) + 4px); padding: 0 16px;
-  border-top: 2px solid var(--ink); font-weight: 800; color: var(--ink); }
-.nb-reslabel { flex: 1; min-width: 0; border: 0; background: transparent; padding: 0; font-weight: 700; color: var(--ink); outline: 0; }
-.nb-reslabel::placeholder { color: var(--muted); font-weight: 500; }
-.nb-fig { flex: none; font-variant-numeric: tabular-nums; white-space: pre; }
-/* while you write in the expenses (the keyboard is up), Totals shrinks to its result row */
-.nb-book:has(.nb-exp textarea:focus) .nb-tscroll,
-.nb-book:has(.nb-exp textarea:focus) .nb-linkbar { display: none; }
-.nb-book:has(.nb-exp textarea:focus) .nb-totals { height: auto; min-height: 0; }
+/* the sheet: every line sits on a rule, headings and totals too */
+.d-page { position: relative; padding: 8px 0 var(--line-h); }
+.d-page { --ruled: repeating-linear-gradient(to bottom, transparent 0 calc(var(--line-h) - 1px), var(--rule) calc(var(--line-h) - 1px) var(--line-h)); }
+.d-sechead, .d-paper, .d-secfoot, .d-total { display: block; margin: 0; padding: 0 16px; line-height: var(--line-h); background: var(--ruled); }
+.d-sec { --tc: var(--ink); }
+.d-sec + .d-sec { padding-top: var(--line-h); background: var(--ruled); }   /* one empty ruled line between parts */
+.d-sechead { height: var(--line-h); font-size: 1.05rem; font-weight: 700; color: color-mix(in srgb, var(--tc) 80%, var(--ink)); }
 
-.nb-exp { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
-.nb-sec { --tc: var(--ink); margin-top: var(--line-h); }
-.nb-sechead { height: calc(var(--line-h) + 8px); display: flex; align-items: center; padding: 0 16px;
-  border-top: 2px solid color-mix(in srgb, var(--tc) 70%, transparent); border-bottom: 2px solid color-mix(in srgb, var(--tc) 70%, transparent);
-  font-size: .95rem; font-weight: 800; letter-spacing: .04em; color: color-mix(in srgb, var(--tc) 85%, var(--ink)); }
-.nb-foot { display: flex; align-items: center; gap: 10px; height: var(--line-h); padding: 0 16px; font-weight: 700; color: var(--ink); }
-.nb-foot .nb-fig { padding-top: 2px; border-top: 2px solid var(--sum); }
-.nb-sec .nb-foot { color: color-mix(in srgb, var(--tc) 80%, var(--ink)); }
-.nb-grand { margin-top: var(--line-h); height: calc(var(--line-h) + 6px); font-weight: 800; font-size: 1.05rem; border-top: 3px double var(--ink); }
-.nb-grand .nb-fig { border-top: 0; }
-
-/* ruled paper: a see-through text box over a drawn copy of the same text */
-.d-paper { position: relative; background: repeating-linear-gradient(to bottom, transparent 0 calc(var(--line-h) - 1px), var(--rule) calc(var(--line-h) - 1px) var(--line-h)); }
+/* the text box is see-through on top; .d-mirror under it shows the same lines, figures inked */
+.d-paper { position: relative; padding: 0; }
 .d-mirror { position: absolute; inset: 0; overflow: hidden; pointer-events: none; color: var(--ink); }
 .d-ml, .d-area { font-size: 1rem; line-height: var(--line-h); padding: 0 16px; white-space: pre-wrap; overflow-wrap: break-word;
-  font-variant-numeric: tabular-nums; font-family: inherit; letter-spacing: normal; }
+  font-family: inherit; font-variant-numeric: tabular-nums; letter-spacing: normal; }
 .d-ml { position: relative; min-height: var(--line-h); }
 .d-area { position: relative; display: block; width: 100%; min-height: var(--line-h); margin: 0; resize: none; overflow: hidden;
   border: 0; border-radius: 0; outline: 0; background: transparent; color: transparent; caret-color: var(--stamp); }
 .d-area::selection { color: transparent; background: var(--hl); }
-.d-area::placeholder { color: var(--muted); opacity: .75; }
-.d-minus { color: var(--ink); font-weight: 700; }
-.d-plus { color: var(--plus); font-weight: 700; }
+.d-area::placeholder { color: var(--muted); opacity: .7; }
 .d-num { font-weight: 600; }
-/* a "____" line is drawn as a rule across the page */
+.d-plus { color: var(--plus); font-weight: 700; }
+/* the figure of a linked Totals line, filled in for you */
+.d-auto { color: var(--auto); font-weight: 600; }
+/* a "____" line you wrote: a faint rule */
 .d-rule { color: transparent; }
-.d-rule::after { content: ""; position: absolute; left: 16px; right: 16px; top: 50%; border-top: 2px solid var(--ink); opacity: .55; }
-/* the filled-in figure of a linked Totals line, in blue ink at the end of the line */
-.d-auto { float: right; margin-left: 12px; color: var(--auto); font-weight: 700; font-style: italic; }
+.d-rule::after { content: ""; position: absolute; left: 16px; right: 16px; top: 50%; border-top: 1px solid var(--muted); opacity: .45; }
+
+/* sums, written like a hand addition: a short stroke above the figure, the words beside it */
+.d-secfoot, .d-total { display: flex; align-items: baseline; height: var(--line-h); font-variant-numeric: tabular-nums; }
+.d-figcol { flex: none; white-space: pre; }
+.d-sum { border-top: 2px solid var(--sum); border-radius: 2px; font-weight: 700; }
+.d-sum:empty { border: 0; }
+.d-footlabel { color: var(--muted); }
+.d-sec .d-secfoot { color: color-mix(in srgb, var(--tc) 80%, var(--ink)); }
+.d-result { font-weight: 700; color: var(--ink); }
+.d-reslabel { flex: 1; min-width: 0; height: var(--line-h); padding: 0; border: 0; outline: 0; background: transparent;
+  font-weight: 700; color: var(--ink); }
+.d-reslabel::placeholder { color: var(--muted); font-weight: 500; }
+/* the month's spending: like the section sums, but bolder, with a heavier stroke, a line further down */
+.d-total { height: calc(var(--line-h) * 2); padding-top: var(--line-h); font-weight: 800; color: var(--ink); }
+.d-total .d-sum { border-top-width: 3px; border-radius: 3px; font-weight: 800; }
+#nb-more button { display: block; margin: 6px auto 0; padding: 8px 18px; font-size: .9rem; color: var(--muted); text-decoration: underline dotted; text-underline-offset: 4px; }
+#nb-more button:active { color: var(--ink); }
+
+/* ---------- settings popover: which Totals lines fill in, and the tags ---------- */
+.pop { position: fixed; right: max(12px, calc(50% - 298px)); top: calc(52px + env(safe-area-inset-top)); z-index: 30;
+  width: min(360px, calc(100% - 24px)); max-height: calc(100dvh - 72px - env(safe-area-inset-top)); overflow-y: auto; overscroll-behavior: contain;
+  padding: 6px 14px 14px; border-radius: 14px; background: var(--card); color: var(--text);
+  box-shadow: 0 10px 30px rgba(0,0,0,.22), inset 0 0 0 1px var(--stroke); }
+.pop h2 { margin: 14px 0 6px; }
+.pop .hint { margin: 0 0 8px; }
+.pop-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; }
+.pop-row + .pop-row { box-shadow: 0 -1px 0 var(--line); }
+.pop-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pop-select { flex: none; max-width: 52%; height: 36px; border: 0; border-radius: 10px; padding: 0 8px; background: var(--field); color: var(--text); }
+.pop .tg-card { background: transparent; box-shadow: none; padding: 0; }
+.pop .tg-new { padding: 0 0 4px; margin: 0; }
 
 /* ---------- currency dialog ---------- */
 .cur-dialog { width: min(440px, calc(100% - 32px)); max-height: 80dvh; border: 0; border-radius: 16px; padding: 18px;

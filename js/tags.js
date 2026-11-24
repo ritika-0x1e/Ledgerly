@@ -1,6 +1,6 @@
 "use strict";
 
-// Tags screen: add, recolour, rename, reorder and delete tags. Each tag is a section of the
+// Tags, in the settings popover: add, recolour, rename, reorder and delete tags. Each tag is a section of the
 // expense area on every month, in this order. Renaming keeps every month joined up (they point at
 // the tag's id) and also rewrites Totals labels that use the old name ("Regular expenses").
 
@@ -43,13 +43,15 @@ async function tagUsage() {
 async function renderTags() {
   const use = await tagUsage();
   const card = el("div", { class: "tg-card" });
-  if (!TAGS.length) card.append(el("div", { class: "empty", text: "No tags. Lines you write go in the expense area without a heading." }));
+  if (!TAGS.length) card.append(el("div", { class: "empty", text: "No tags yet." }));
   TAGS.forEach((t, i) => card.append(tagRow(t, i, use.get(t.id))));
-  $("view-tags").replaceChildren(
-    el("p", { class: "hint", text: "Each tag is a section in the expense area of every month, with its own total. A Totals line that names a tag (“Regular expenses”) fills in that total." }),
-    newTagForm(),
-    el("h2", { text: `Your tags (${TAGS.length})` }),
-    card);
+  $("pop-tags").replaceChildren(card, newTagForm());
+}
+// After a change: the popover and the notebook's sections are drawn again, and a toast says so.
+async function tagsChanged(msg) {
+  await renderTags();
+  await renderNotebook();
+  if (msg) toast(msg);
 }
 
 function newTagForm() {
@@ -59,8 +61,8 @@ function newTagForm() {
   const add = async () => {
     if (!cleanTagName(input.value)) { toast("Give the tag a name (up to 30 characters)"); return; }
     if (tagNamed(input.value, TAGS)) { toast("That tag already exists"); return; }
-    addTag(input.value, sw.value);
-    await renderTags();
+    const tag = addTag(input.value, sw.value);
+    await tagsChanged(`Tag “${tag.name}” added`);
   };
   btn.addEventListener("click", add);
   input.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); add(); } });
@@ -139,7 +141,7 @@ function tagEditor(t, index, u) {
   const down = el("button", { type: "button", class: "tg-btn ghost", text: "Move down", "aria-label": "Move down" });
   up.disabled = index === 0;
   down.disabled = index === TAGS.length - 1;
-  const move = async (d) => { TAGS.splice(index + d, 0, TAGS.splice(index, 1)[0]); saveTags(); await renderTags(); };
+  const move = async (d) => { TAGS.splice(index + d, 0, TAGS.splice(index, 1)[0]); saveTags(); await tagsChanged(); };
   up.addEventListener("click", () => move(-1));
   down.addEventListener("click", () => move(1));
 
@@ -152,7 +154,7 @@ function tagEditor(t, index, u) {
     t.color = sw.value;
     saveTags();
     openTag = null;
-    await renderTags();
+    await tagsChanged(`Tag “${t.name}” saved`);
   });
 
   del.addEventListener("click", async () => {
@@ -160,7 +162,7 @@ function tagEditor(t, index, u) {
     if (!confirm(n ? `Delete "${t.name}"? Its lines in ${n} month${n === 1 ? "" : "s"} move to the lines without a tag.` : `Delete "${t.name}"?`)) return;
     try { await deleteTag(t); } catch (err) { toast(err.message); return; }
     openTag = null;
-    await renderTags();
+    await tagsChanged(`Tag “${t.name}” deleted`);
   });
 
   return el("div", { class: "tg-editor" }, input, sw.node,

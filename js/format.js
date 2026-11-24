@@ -3,11 +3,13 @@
 // How a notebook line is read and written. Pure functions only (no screen, no storage), so the
 // same code reads what you type, what you paste and what you import, and Node can test it.
 //
-// A line is "[sign] amount label". A "+" in front means add; anything else (a "-" or no sign)
-// means take away. The amount may be typed on either side ("bus 4", "4 bus", "-4.00 bus"); a
-// finished line is written back as "− 4.00 bus", figure first. Lines without an amount are
-// notes, blank lines are just blank lines, and "____" / "----" / "———" lines are drawn rules.
-// None of those count towards anything.
+// A line is "[sign] amount label". A "+" means money coming in; anything else (a "-" or no sign)
+// is spent. The amount may be typed on either side ("bus 4", "4 bus", "+ 2000 salary"); a
+// finished line is written back figure first in a column, "    4.00 bus", and only a "+" you
+// typed is kept ("+2000.00 salary"). Lines without an amount are notes, blank lines are just
+// blank lines, and "____" / "----" lines are rules. None of those count towards anything.
+// In Totals, a line without a figure starts with an empty figure column, which is where a
+// linked line shows its filled-in figure and where you write the figure on the others.
 
 const FIG = " ";            // a space exactly as wide as a digit: keeps the figures lined up
 const MINUS = "−";          // the maths minus, as wide as "+"
@@ -55,25 +57,40 @@ function parseLine(raw) {
   return { sign: (own || lead) === "+" ? 1 : -1, explicit: !!(own || lead), paise: toPaise(pick[2]), label };
 }
 
-const signChar = (sign) => (sign > 0 ? "+" : MINUS);
-const figure = (paise) => (paise / 100).toFixed(2).padStart(7, FIG);
-function formatLine(p) {
-  if (p.paise != null) return `${signChar(p.sign)} ${figure(p.paise)} ${p.label}`.trimEnd();
-  return p.explicit ? `${signChar(p.sign)} ${p.label}`.trimEnd() : p.label;
+const COL = 8;                         // the figure column, in digit widths ("+1234.00")
+// An empty figure column, as wide as a written one: a figure always has one full stop, which is
+// narrower than a digit, so the last place is a punctuation space (the width of a full stop).
+const BLANK = FIG.repeat(COL - 1) + "\u2008";
+const figCol = (s) => s.padStart(COL, FIG);
+const amount = (paise) => (paise / 100).toFixed(2);
+// blankCol: a line without a figure gets the empty figure column (Totals lines)
+function formatLine(p, blankCol) {
+  if (p.paise != null) return `${figCol((p.sign > 0 ? "+" : "") + amount(p.paise))} ${p.label}`.trimEnd();
+  return blankCol && p.label ? `${BLANK} ${p.label}` : p.label;
 }
-function normalizeLine(raw) {
+function normalizeLine(raw, blankCol) {
   if (isBlank(raw)) return "";
   if (isMarker(raw)) return String(raw).trim();
-  return formatLine(parseLine(raw));
+  return formatLine(parseLine(raw), blankCol);
 }
+// How worked-out figures are shown: spending as a plain amount (a refund-heavy section gets "+"),
+// a balance as a plain amount (below zero gets "−").
+const spentFig = (v) => figCol(v > 0 ? `+${amount(v)}` : amount(-v));
+const balanceFig = (v) => figCol(v < 0 ? `${MINUS}${amount(-v)}` : amount(v));
 const lineValue = (p) => (p && p.paise != null ? p.sign * p.paise : null);
 function areaTotal(text) {
   let sum = 0;
   for (const line of String(text || "").split("\n")) { const v = lineValue(parseLine(line)); if (v !== null) sum += v; }
   return sum;
 }
-// A signed amount as a finished line: -50565 -> "− 505.65 label"
-const signedLine = (paise, label) => formatLine({ sign: paise < 0 ? -1 : 1, paise: Math.abs(paise), label });
+// For text export and Drive: every figure with its sign, like the notes it came from: "- 505.65 label"
+const signedLine = (paise, label) => `${paise < 0 ? "-" : "+"} ${amount(Math.abs(paise))} ${label}`.trimEnd();
+function plainLine(line) {
+  if (isBlank(line)) return "";
+  if (isMarker(line)) return String(line).trim();
+  const p = parseLine(line);
+  return p.paise != null ? signedLine(p.sign * p.paise, p.label) : p.label;
+}
 
 // ---------- tags ----------
 // The tag whose words appear, in order, in a label ("Regular expenses" -> Regular). Longest wins.
@@ -183,8 +200,8 @@ const bumpMonths = (text) => String(text).replace(MONTH_WORD, (w) => {
 // The first month ever: laid out like the user's notebook, figures left blank.
 function starterMonth(ym, tags) {
   const i = +ym.slice(5) - 1, cur = MONTHS_SHORT[i], next = MONTHS_SHORT[(i + 1) % 12];
-  const lines = [`+ Available to spend in ${cur}`, ...tags.map((t) => `${MINUS} ${t.name} expenses`),
-    `+ Salary ${cur}`, `${MINUS} Standard savings`, `${MINUS} Rent Adv ${next}`];
+  const lines = [`Available to spend in ${cur}`, ...tags.map((t) => `${t.name} expenses`),
+    `Salary ${cur}`, "Standard savings", `Rent Adv ${next}`].map((label) => formatLine({ label, paise: null }, true));
   return { ym, totals: lines.join("\n"), links: [], resultLabel: `Available to spend in ${next}`, untagged: "", sections: {} };
 }
 
@@ -194,7 +211,7 @@ function nextMonthFrom(prev, ym) {
   const strip = (line) => {
     if (isBlank(line) || isMarker(line)) return line;
     const p = parseLine(line);
-    return formatLine({ ...p, explicit: p.explicit || p.paise != null, paise: null });
+    return formatLine({ ...p, paise: null }, true);
   };
   let totals = String(prev.totals || "").split("\n").map(strip).join("\n");
   let label = prev.resultLabel || "";
@@ -265,7 +282,7 @@ function cleanTotals(lines) {
       break;
     }
   });
-  return { lines: trimBlank(lines.filter((_, i) => !drop.has(i)).map(normalizeLine)), resultLabel };
+  return { lines: trimBlank(lines.filter((_, i) => !drop.has(i)).map((l) => normalizeLine(l, true))), resultLabel };
 }
 
 // Old expense lines: rules and hand-written "total" lines go (the app adds up again).
@@ -275,7 +292,7 @@ function cleanExpense(lines) {
     if (isMarker(l)) return false;
     const p = parseLine(l);
     return !(p && TOTAL_WORDS.some((w) => sameWords(w, words(p.label))));
-  }).map(normalizeLine));
+  }).map((l) => normalizeLine(l)));
 }
 
 // A parsed block -> a draft month: { ym, totals, resultLabel, untagged, sections: [{ name, text }] }
@@ -303,7 +320,7 @@ function relinkTotals(m, tags, prevResult) {
     if (p.paise == null) return line;
     const v = p.sign * p.paise, tag = tagInLabel(p.label, tags);
     const copy = tag ? v === (c.tagTotals[tag.id] || 0) : isFirst && prevResult != null && v === prevResult;
-    return copy ? formatLine({ ...p, paise: null, explicit: true }) : line;
+    return copy ? formatLine({ ...p, paise: null }, true) : line;
   }).join("\n");
   return m;
 }
@@ -316,12 +333,12 @@ function monthToText(m, tags, c) {
   const out = [BANNER, monthTitle(m.ym), BANNER, ""];
   String(m.totals || "").split("\n").forEach((line, i) => {
     const v = c.vals[i];
-    out.push(v && v.auto ? signedLine(v.v, parseLine(line).label) : line);
+    out.push(v && v.auto ? signedLine(v.v, parseLine(line).label) : plainLine(line));
   });
   if (c.result !== null || m.resultLabel) out.push(RULE, signedLine(c.result || 0, m.resultLabel || ""));
   const section = (title, text, total) => {
     out.push("", DASHES, title, DASHES, "");
-    if (!isBlank(text)) out.push(...String(text).split("\n"));
+    if (!isBlank(text)) out.push(...String(text).split("\n").map(plainLine));
     out.push(RULE, signedLine(total, "total"));
   };
   if (!isBlank(m.untagged || "")) section("EXPENSES", m.untagged, c.untagged);
@@ -385,11 +402,11 @@ function csvToDrafts(text) {
   }
   const byMonth = new Map();
   for (const r of rows.slice(1)) {
-    const [ym, section, sign, amount, label] = r.map((c) => csvUnsafe(c || ""));
+    const [ym, section, sign, amt, label] = r.map((c) => csvUnsafe(c || ""));
     if (!/^\d{4}-\d{2}$/.test(ym.trim())) continue;
     if (!byMonth.has(ym)) byMonth.set(ym, { ym, totals: [], resultLabel: null, untagged: [], sections: new Map() });
     const d = byMonth.get(ym);
-    const line = normalizeLine([sign, amount, label].filter(Boolean).join(" "));
+    const line = normalizeLine([sign, amt, label].filter(Boolean).join(" "), section.trim().toLowerCase() === "totals");
     const sec = section.trim().toLowerCase();
     if (sec === "totals") d.totals.push(line);
     else if (sec === "result") d.resultLabel = parseLine(line) ? parseLine(line).label : "";
@@ -407,7 +424,7 @@ function csvToDrafts(text) {
 }
 
 if (typeof module !== "undefined") {
-  module.exports = { parseLine, formatLine, normalizeLine, areaTotal, words, tagInLabel, tagNamed, takeTagMark,
+  module.exports = { parseLine, formatLine, normalizeLine, plainLine, spentFig, balanceFig, BLANK, COL, areaTotal, words, tagInLabel, tagNamed, takeTagMark,
     computeMonth, computeAll, spliceLinks, detectLink, signedLine, MONTHS_FULL, bumpMonths, starterMonth, nextMonthFrom, parseNotes, blockToDraft, cleanTotals,
     cleanExpense, relinkTotals, monthToText, monthsToCsv, csvToDrafts, monthTitle, isMarker, isBlank };
 }

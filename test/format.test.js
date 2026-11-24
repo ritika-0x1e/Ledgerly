@@ -1,15 +1,13 @@
 "use strict";
 // Run: node test/format.test.js
-// Reads the sample notebook and checks the sums the app works out match the hand-written ones.
+// Reads a made-up sample notebook (test/sample.txt) and checks the sums the app works out match the
+// hand-written ones.
 const fs = require("fs");
 const path = require("path");
 const assert = require("assert");
 const F = require("../js/format.js");
 
-// The sample is personal notes, kept out of git, so the test is skipped where it isn't there (CI).
-const samplePath = path.join(__dirname, "..", "test fomat .md");
-if (!fs.existsSync(samplePath)) { console.log("skipped: \"test fomat .md\" is not here"); process.exit(0); }
-const sample = fs.readFileSync(samplePath, "utf8");
+const sample = fs.readFileSync(path.join(__dirname, "sample.txt"), "utf8");
 const tags = [{ id: "t1", name: "Regular" }, { id: "t2", name: "Major" }];
 const money = (p) => (p / 100).toFixed(2);
 
@@ -34,12 +32,12 @@ const comps = F.computeAll(months, tags);
 const get = (ym) => comps.get(ym);
 
 check("finds Sept, Oct, Nov 2026", () => assert.deepStrictEqual(months.map((m) => m.ym), ["2026-09", "2026-10", "2026-11"]));
-check("Sept Regular = 505.65", () => assert.strictEqual(money(-get("2026-09").tagTotals.t1), "505.65"));
-check("Sept result = 2388.00", () => assert.strictEqual(money(get("2026-09").result), "2388.00"));
+check("Sept Regular = 120.50", () => assert.strictEqual(money(-get("2026-09").tagTotals.t1), "120.50"));
+check("Sept result = 1629.50", () => assert.strictEqual(money(get("2026-09").result), "1629.50"));
 check("Sept result label kept", () => assert.strictEqual(months[0].resultLabel, "Available to spend in October"));
-check("Oct Regular = 286.03", () => assert.strictEqual(money(-get("2026-10").tagTotals.t1), "286.03"));
-check("Oct Major = 1252.90", () => assert.strictEqual(money(-get("2026-10").tagTotals.t2), "1252.90"));
-check("Oct result = 1567.18", () => assert.strictEqual(money(get("2026-10").result), "1567.18"));
+check("Oct Regular = 60.25", () => assert.strictEqual(money(-get("2026-10").tagTotals.t1), "60.25"));
+check("Oct Major = 300.00", () => assert.strictEqual(money(-get("2026-10").tagTotals.t2), "300.00"));
+check("Oct result = 2019.25", () => assert.strictEqual(money(get("2026-10").result), "2019.25"));
 check("Oct carry-over is linked to Sept", () => {
   const first = months[1].totals.split("\n")[0];
   assert.ok(F.parseLine(first).paise === null, first);
@@ -71,7 +69,7 @@ check("CSV round trip", () => {
   assert.strictEqual(drafts.length, 3);
   const oct = drafts[1];
   const reg = oct.sections.find((s) => s.name === "Regular");
-  assert.strictEqual(money(-F.areaTotal(reg.text)), "286.03");
+  assert.strictEqual(money(-F.areaTotal(reg.text)), "60.25");
 });
 check("line parsing", () => {
   const p = (s) => { const x = F.parseLine(s); return [x.sign, x.paise, x.label]; };

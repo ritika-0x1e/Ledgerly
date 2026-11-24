@@ -1,0 +1,75 @@
+============================================
+Sept 2026
+============================================
+
++  1000.00 Available to spend in Sept
+-     120.50 Regular expenses
+__________
++    879.50 Leftover after expenses
++  2000.00 Salary Sept
+-     800.00 Standard savings
+-     450.00 Rent Adv October
+__________
++  1629.50 Available to spend in October
+
+———————————————
+EXPENSES: Regular
+———————————————
+
+-     4.00 bus
+-   12.30 groceries
++     5.00 refund
+- 109.20 weekly shop
+__________
+-  120.50 total
+
+============================================
+Oct 2026
+============================================
+
++  1629.50 Available to spend in October
+-       60.25 Regular expenses
+-     300.00 Major expenses
+__________
++  1269.25 Leftover after expenses
++  2000.00 Salary Oct
+-     800.00 Standard savings
+-     450.00 Rent Adv November
+__________
++  2019.25 Available to spend in November
+
+———————————————
+EXPENSES: Regular
+———————————————
+
+-     4.00 bus
+-     6.25 coffee
+-   50.00 phone
+__________
+-   60.25 total
+
+———————————————
+EXPENSES: Major
+———————————————
+
+- 300.00 laptop
+__________
+- 300.00 total
+
+============================================
+Nov 2026
+============================================
+
++  2019.25 Available to spend in Nov
+-     000.00 Regular expenses
+__________
++    000.00 Leftover after expenses
++  0000.00 Salary Nov
+-     800.00 Standard savings
+-     450.00 Rent Adv December
+__________
++  0000.00 Available to spend in December
+
+———————————————
+EXPENSES: Regular
+———————————————
