@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Ledgerly privacy</title>
+  <link rel="icon" href="icons/icon-rounded.svg" type="image/svg+xml">
+  <style>
+    :root { --bg:#dde4ea; --paper:#f6f8f9; --ink:#1d3245; --muted:#5f7184; --accent:#3a6b9a; --rule:rgba(58,107,154,.22); }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg:#0a1016; --paper:#111a22; --ink:#dbe4ec; --muted:#8a9aab; --accent:#7fa9d3; --rule:rgba(127,169,211,.17); }
+    }
+    body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui, sans-serif; }
+    main { max-width:640px; margin:24px auto; padding:24px 20px; background:var(--paper); border-radius:12px; }
+    h1 { margin:0 0 4px; font-size:1.6rem; }
+    h2 { margin:28px 0 6px; font-size:1.1rem; padding-bottom:4px; border-bottom:1px solid var(--rule); }
+    p, li { margin:6px 0; }
+    .muted { color:var(--muted); font-size:.9rem; }
+    a { color:var(--accent); }
+    @media (max-width:680px) { main { margin:0; border-radius:0; padding:20px 16px; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Ledgerly privacy policy</h1>
+  <p class="muted">Last updated 24 November 2026</p>
+
+  <p>Ledgerly is a paper-style monthly expense notebook that runs in your phone's browser. In short: your
+  notes stay on your phone, and the only copy that ever leaves it is the Google Drive backup you choose
+  to turn on, which goes into your own Drive.</p>
+
+  <h2>What stays on your device</h2>
+  <p>Everything you write (months, expense lines, tags, settings) is stored only in your browser on your
+  device. There is no Ledgerly account and no Ledgerly server that receives your notes. Nothing is
+  tracked, there are no ads, and no analytics.</p>
+
+  <h2>Google Drive backup (optional)</h2>
+  <ul>
+    <li>If you tap <b>Connect Google Drive</b>, you sign in with a Google account of your choice and allow
+      Ledgerly the <code>drive.file</code> permission. With it, Ledgerly can see and change only the files
+      it creates itself, never anything else in your Drive.</li>
+    <li>Ledgerly creates a folder called <b>Ledgerly</b> in that Drive and saves one text file per month in
+      it. These files go straight from your phone to Google; they do not pass through any other server.</li>
+    <li>To keep backups working without asking you to sign in again, a small sign-in service (a Cloudflare
+      Worker) stores the Google sign-in token for your device. It holds only that token, linked to a random
+      key kept on your phone. It never receives your notes and keeps no logs of them.</li>
+    <li>Ledgerly's use of information received from Google APIs follows the
+      <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User
+      Data Policy</a>, including the Limited Use requirements. The data is used only to back up your own
+      notes to your own Drive; it is not sold, shared, or used for anything else.</li>
+  </ul>
+
+  <h2>Removing access and data</h2>
+  <ul>
+    <li><b>Disconnect Drive</b> in the app's menu revokes the Google permission and deletes the stored
+      sign-in token. You can also remove Ledgerly at
+      <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
+    <li>Backup files stay in your Drive until you delete them; they are yours.</li>
+    <li>Clearing the site's data or uninstalling the app removes the notes from your device.</li>
+  </ul>
+
+  <h2>Contact</h2>
+  <p>Questions or requests: open an issue at
+    <a href="https://github.com/ritika-0x1e/Ledgerly/issues">github.com/ritika-0x1e/Ledgerly</a>.</p>
+
+  <p class="muted"><a href="./">Back to Ledgerly</a></p>
+</main>
+</body>
+</html>
